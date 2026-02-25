@@ -1,149 +1,34 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
-import { saveSupabaseConfig, initializeDisparosTable } from "@/lib/supabase-client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Shield, Database, CheckCircle2, AlertCircle } from "lucide-react";
+import { loadConfigFromCloud, getSupabaseConfig } from "@/lib/supabase-client";
+import { Loader2 } from "lucide-react";
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const [url, setUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  const handleConnect = async () => {
-    if (!url.trim() || !apiKey.trim()) {
-      setFeedback({ type: "error", message: "Preencha todos os campos obrigatórios." });
-      return;
-    }
-
-    setLoading(true);
-    setFeedback(null);
-
-    try {
-      const client = createClient(url.trim(), apiKey.trim());
-      
-      // Validate connection by querying a non-existent table
-      // PGRST205 or 404 = table not found, which confirms the connection works
-      const { error: connError } = await client.from("_dummy_check").select("*").limit(1);
-      if (connError && connError.code !== "PGRST205" && connError.code !== "42P01" && !connError.message.includes("does not exist")) {
-        setFeedback({ type: "error", message: "Erro na conexão. Verifique suas credenciais." });
-        setLoading(false);
+  useEffect(() => {
+    const init = async () => {
+      // Check localStorage first
+      if (getSupabaseConfig()) {
+        navigate("/dashboard");
         return;
       }
-
-      saveSupabaseConfig({ url: url.trim(), apiKey: apiKey.trim() });
-
-      const result = await initializeDisparosTable(client);
-      setFeedback({ type: result.success ? "success" : "error", message: result.message });
-
-      if (result.success) {
-        setTimeout(() => navigate("/dashboard"), 1500);
+      // Try loading from Cloud
+      const config = await loadConfigFromCloud();
+      if (config) {
+        navigate("/dashboard");
+      } else {
+        // No config found — shouldn't happen if signup was done correctly
+        // Redirect to auth
+        navigate("/auth");
       }
-    } catch {
-      setFeedback({ type: "error", message: "Erro na conexão. Verifique suas credenciais." });
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    init();
+  }, [navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-lg animate-fade-in">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-primary">Disparador</span>{" "}
-            <span className="text-foreground">Varella</span>
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Conecte seu Supabase para iniciar.
-          </p>
-        </div>
-
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="h-5 w-5 text-primary" />
-              Integração Supabase
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Informe as credenciais do seu projeto Supabase. 
-              A tabela <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono text-foreground">disparos</code> será 
-              criada automaticamente caso não exista.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="url">Supabase Project URL</Label>
-              <Input
-                id="url"
-                placeholder="https://xxxx.supabase.co"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="bg-secondary border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">Supabase API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="bg-secondary border-border"
-              />
-            </div>
-
-            <div className="rounded-lg border border-border bg-secondary/50 p-4">
-              <div className="flex items-start gap-3">
-                <Database className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground">O que será criado</p>
-                  <p>
-                    Tabela <code className="text-primary font-mono">disparos</code> com os campos:
-                    id (uuid), nome (text), telefone (text), status (text), created_at (timestamp).
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {feedback && (
-              <Alert variant={feedback.type === "error" ? "destructive" : "default"} className={feedback.type === "success" ? "border-border bg-secondary" : ""}>
-                {feedback.type === "success" ? (
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
-                )}
-                <AlertDescription>
-                  {feedback.message}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <Button
-              onClick={handleConnect}
-              disabled={loading}
-              className="w-full"
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Conectando...
-                </>
-              ) : (
-                "Conectar e Criar Estrutura"
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   );
 }

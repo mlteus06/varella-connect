@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { saveConfigToCloud, loadConfigFromCloud } from "@/lib/supabase-client";
+import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +15,23 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [supabaseUrl, setSupabaseUrl] = useState("");
+  const [supabaseApiKey, setSupabaseApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const validateExternalConnection = async (url: string, key: string) => {
+    try {
+      const client = createClient(url, key);
+      const { error } = await client.from("_dummy_check").select("*").limit(1);
+      if (error && error.code !== "PGRST205" && error.code !== "42P01" && !error.message.includes("does not exist")) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,17 +43,45 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           setFeedback({ type: "error", message: error.message });
+          setLoading(false);
+          return;
+        }
+        // Fetch config from Cloud and save to localStorage
+        const config = await loadConfigFromCloud();
+        if (config) {
+          navigate("/dashboard");
         } else {
           navigate("/");
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        if (!supabaseUrl.trim() || !supabaseApiKey.trim()) {
+          setFeedback({ type: "error", message: "Preencha a URL e API Key do seu Supabase." });
+          setLoading(false);
+          return;
+        }
+
+        const valid = await validateExternalConnection(supabaseUrl.trim(), supabaseApiKey.trim());
+        if (!valid) {
+          setFeedback({ type: "error", message: "Não foi possível conectar ao Supabase. Verifique as credenciais." });
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) {
           setFeedback({ type: "error", message: error.message });
+          setLoading(false);
+          return;
+        }
+
+        // If auto-confirm is on, save config immediately
+        if (data.session) {
+          await saveConfigToCloud(supabaseUrl.trim(), supabaseApiKey.trim());
+          navigate("/dashboard");
         } else {
           setFeedback({
             type: "success",
@@ -72,7 +117,7 @@ export default function Auth() {
             <CardDescription className="text-muted-foreground">
               {isLogin
                 ? "Informe suas credenciais para acessar o painel."
-                : "Preencha os dados para criar sua conta."}
+                : "Preencha os dados para criar sua conta e conectar seu Supabase."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -102,6 +147,36 @@ export default function Auth() {
                   minLength={6}
                 />
               </div>
+
+              {!isLogin && (
+                <>
+                  <div className="my-4 border-t border-border" />
+                  <p className="text-xs text-muted-foreground font-medium">Conexão com seu Supabase externo</p>
+                  <div className="space-y-2">
+                    <Label htmlFor="supabaseUrl">Supabase Project URL</Label>
+                    <Input
+                      id="supabaseUrl"
+                      placeholder="https://xxxx.supabase.co"
+                      value={supabaseUrl}
+                      onChange={(e) => setSupabaseUrl(e.target.value)}
+                      className="bg-secondary border-border"
+                      required={!isLogin}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="supabaseApiKey">Supabase API Key</Label>
+                    <Input
+                      id="supabaseApiKey"
+                      type="password"
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                      value={supabaseApiKey}
+                      onChange={(e) => setSupabaseApiKey(e.target.value)}
+                      className="bg-secondary border-border"
+                      required={!isLogin}
+                    />
+                  </div>
+                </>
+              )}
 
               {feedback && (
                 <Alert

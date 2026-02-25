@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { clearSupabaseConfig } from "@/lib/supabase-client";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut, LayoutDashboard, Plus } from "lucide-react";
 
@@ -7,9 +8,10 @@ export function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleDisconnect = () => {
+  const handleLogout = async () => {
     clearSupabaseConfig();
-    navigate("/");
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   return (
@@ -41,9 +43,9 @@ export function AppHeader() {
             </Button>
           </nav>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleDisconnect} className="gap-2 text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-muted-foreground">
           <LogOut className="h-4 w-4" />
-          Desconectar
+          Sair
         </Button>
       </div>
     </header>

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createExternalClient, getSupabaseConfig } from "@/lib/supabase-client";
+import { createExternalClient, getSupabaseConfig, getLastMessage, saveLastMessage, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -13,12 +14,37 @@ export default function NovoDisparo() {
   const navigate = useNavigate();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [mensagem, setMensagem] = useState("Olá");
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(true);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
-    if (!getSupabaseConfig()) navigate("/");
+    const init = async () => {
+      let config = getSupabaseConfig();
+      if (!config) {
+        config = await loadConfigFromCloud();
+      }
+      if (!config) {
+        navigate("/");
+        return;
+      }
+      // Load last message from Cloud
+      const lastMsg = await getLastMessage();
+      setMensagem(lastMsg);
+      setLoadingMessage(false);
+    };
+    init();
   }, [navigate]);
+
+  const handleMensagemChange = (value: string) => {
+    setMensagem(value);
+  };
+
+  const handleMensagemBlur = () => {
+    // Save last message when user leaves the field
+    saveLastMessage(mensagem);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +66,7 @@ export default function NovoDisparo() {
     const { error } = await client.from("disparos").insert({
       nome: nome.trim() || null,
       telefone: telefone.trim(),
+      mensagem: mensagem.trim() || "Olá",
       status: "PENDENTE",
     });
 
@@ -49,6 +76,8 @@ export default function NovoDisparo() {
       setFeedback({ type: "success", message: "Registro salvo com status PENDENTE." });
       setNome("");
       setTelefone("");
+      // Save the message as last used
+      await saveLastMessage(mensagem);
     }
 
     setLoading(false);
@@ -90,6 +119,24 @@ export default function NovoDisparo() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="mensagem">Mensagem</Label>
+                {loadingMessage ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+                  </div>
+                ) : (
+                  <Textarea
+                    id="mensagem"
+                    placeholder="Digite a mensagem..."
+                    value={mensagem}
+                    onChange={(e) => handleMensagemChange(e.target.value)}
+                    onBlur={handleMensagemBlur}
+                    className="bg-secondary border-border min-h-[100px]"
+                    maxLength={1000}
+                  />
+                )}
+              </div>
 
               {feedback && (
                 <Alert variant={feedback.type === "error" ? "destructive" : "default"} className={feedback.type === "success" ? "border-border bg-secondary" : ""}>
@@ -104,7 +151,7 @@ export default function NovoDisparo() {
                 </Alert>
               )}
 
-              <Button type="submit" disabled={loading} className="w-full" size="lg">
+              <Button type="submit" disabled={loading || loadingMessage} className="w-full" size="lg">
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
