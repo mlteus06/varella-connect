@@ -28,10 +28,10 @@ export default function Onboarding() {
     try {
       const client = createClient(url.trim(), apiKey.trim());
       
-      // Validate connection
+      // Validate connection by querying a non-existent table
+      // PGRST205 or 404 = table not found, which confirms the connection works
       const { error: connError } = await client.from("_dummy_check").select("*").limit(1);
-      // 42P01 = table doesn't exist, which is fine — means connection works
-      if (connError && connError.code !== "42P01" && !connError.message.includes("does not exist")) {
+      if (connError && connError.code !== "PGRST205" && connError.code !== "42P01" && !connError.message.includes("does not exist")) {
         setFeedback({ type: "error", message: "Erro na conexão. Verifique suas credenciais." });
         setLoading(false);
         return;
