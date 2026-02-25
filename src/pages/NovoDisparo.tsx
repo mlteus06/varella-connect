@@ -26,7 +26,7 @@ export default function NovoDisparo() {
         config = await loadConfigFromCloud();
       }
       if (!config) {
-        navigate("/");
+        navigate("/onboarding");
         return;
       }
       // Load last message from Cloud
