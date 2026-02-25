@@ -14,30 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      disparos: {
-        Row: {
-          created_at: string | null
-          id: string
-          nome: string | null
-          status: string | null
-          telefone: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          nome?: string | null
-          status?: string | null
-          telefone: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          nome?: string | null
-          status?: string | null
-          telefone?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never

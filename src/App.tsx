@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthGuard } from "@/components/AuthGuard";
+import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import NovoDisparo from "./pages/NovoDisparo";
@@ -17,9 +19,31 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Onboarding />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/novo" element={<NovoDisparo />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/"
+            element={
+              <AuthGuard>
+                <Onboarding />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <AuthGuard>
+                <Dashboard />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/novo"
+            element={
+              <AuthGuard>
+                <NovoDisparo />
+              </AuthGuard>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
