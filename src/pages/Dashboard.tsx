@@ -49,7 +49,7 @@ export default function Dashboard() {
         config = await loadConfigFromCloud();
       }
       if (!config) {
-        navigate("/");
+        navigate("/onboarding");
         return;
       }
       fetchDisparos();

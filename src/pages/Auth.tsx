@@ -46,14 +46,16 @@ export default function Auth() {
           setLoading(false);
           return;
         }
-        // Fetch config from Cloud and save to localStorage
+        // Fetch config from Cloud
         const config = await loadConfigFromCloud();
         if (config) {
           navigate("/dashboard");
         } else {
-          navigate("/");
+          // No config yet — go to onboarding to set up Supabase credentials
+          navigate("/onboarding");
         }
       } else {
+        // Signup flow
         if (!supabaseUrl.trim() || !supabaseApiKey.trim()) {
           setFeedback({ type: "error", message: "Preencha a URL e API Key do seu Supabase." });
           setLoading(false);
@@ -67,26 +69,23 @@ export default function Auth() {
           return;
         }
 
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) {
           setFeedback({ type: "error", message: error.message });
           setLoading(false);
           return;
         }
 
-        // If auto-confirm is on, save config immediately
         if (data.session) {
+          // Auto-confirmed — save config and go to dashboard
           await saveConfigToCloud(supabaseUrl.trim(), supabaseApiKey.trim());
           navigate("/dashboard");
         } else {
           setFeedback({
             type: "success",
-            message: "Cadastro realizado! Verifique seu email para confirmar a conta.",
+            message: "Cadastro realizado! Faça login para continuar.",
           });
+          setIsLogin(true);
         }
       }
     } catch {
