@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Database, Clock, CheckCircle, Loader2, CalendarIcon } from "lucide-react";
+import { Plus, Database, Clock, CheckCircle, Loader2, CalendarIcon, MessageCircle, Percent } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ interface Disparo {
   mensagem: string | null;
   status: string;
   created_at: string;
+  respondeu?: boolean | null;
 }
 
 type FilterKey = "today" | "yesterday" | "7d" | "15d" | "30d" | "custom";
@@ -113,6 +114,8 @@ export default function Dashboard() {
   const totalRegistros = filteredDisparos.length;
   const totalPendentes = filteredDisparos.filter((d) => d.status === "PENDENTE").length;
   const totalEnviados = filteredDisparos.filter((d) => d.status === "ENVIADO").length;
+  const totalResponderam = filteredDisparos.filter((d) => d.respondeu === true).length;
+  const taxaResposta = totalEnviados > 0 ? Math.round((totalResponderam / totalEnviados) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -173,10 +176,12 @@ export default function Dashboard() {
           </Popover>
         </div>
 
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Total de Registros" value={totalRegistros} icon={Database} />
           <StatCard label="Pendentes" value={totalPendentes} icon={Clock} />
           <StatCard label="Enviados" value={totalEnviados} icon={CheckCircle} />
+          <StatCard label="Responderam" value={totalResponderam} icon={MessageCircle} />
+          <StatCard label="Taxa de Resposta" value={`${taxaResposta}%`} icon={Percent} />
         </div>
 
         <Card className="bg-card border-border">
@@ -200,6 +205,7 @@ export default function Dashboard() {
                     <TableHead className="text-muted-foreground">Telefone</TableHead>
                     <TableHead className="text-muted-foreground">Mensagem</TableHead>
                     <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground">Respondeu</TableHead>
                     <TableHead className="text-muted-foreground text-right">Data</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -211,6 +217,16 @@ export default function Dashboard() {
                       <TableCell className="text-sm max-w-[200px] truncate">{d.mensagem || "—"}</TableCell>
                       <TableCell>
                         <StatusBadge status={d.status} />
+                      </TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                          d.respondeu
+                            ? "bg-green-500/10 text-green-500"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {d.respondeu ? "Sim" : "Não"}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {new Date(d.created_at).toLocaleDateString("pt-BR")}
