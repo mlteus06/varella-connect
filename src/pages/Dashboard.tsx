@@ -114,6 +114,8 @@ export default function Dashboard() {
   const totalRegistros = filteredDisparos.length;
   const totalPendentes = filteredDisparos.filter((d) => d.status === "PENDENTE").length;
   const totalEnviados = filteredDisparos.filter((d) => d.status === "ENVIADO").length;
+  const totalResponderam = filteredDisparos.filter((d) => d.respondeu === true).length;
+  const taxaResposta = totalEnviados > 0 ? Math.round((totalResponderam / totalEnviados) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
