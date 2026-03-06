@@ -183,6 +183,8 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     setCampaignName("");
     setContacts([]);
     setFileName("");
+    setContactSource("file");
+    setSelectedCampaignId("");
     setCreateOpen(false);
     fetchCampaigns();
     setSaving(false);
