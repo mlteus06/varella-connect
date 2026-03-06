@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createExternalClient, getSupabaseConfig, getLastMessage, saveLastMessage, loadConfigFromCloud } from "@/lib/supabase-client";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
+import { CampaignManager } from "@/components/CampaignManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
