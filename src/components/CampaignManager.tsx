@@ -298,32 +298,84 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Planilha de Contatos</Label>
-                <p className="text-xs text-muted-foreground">
-                  A 1ª coluna deve ser o <strong>Nome</strong> e a 2ª o <strong>Número de telefone</strong>.
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4" />
-                  {fileName || "Selecionar planilha (.xlsx, .xls, .csv)"}
-                </Button>
-                {contacts.length > 0 && (
-                  <p className="text-sm text-primary font-medium">
-                    ✓ {contacts.length} contatos carregados
-                  </p>
-                )}
+                <Label>Origem dos Contatos</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={contactSource === "file" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 gap-2"
+                    onClick={() => { setContactSource("file"); setContacts([]); setFileName(""); setSelectedCampaignId(""); }}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Nova Planilha
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={contactSource === "campaign" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 gap-2"
+                    disabled={campaigns.length === 0}
+                    onClick={() => { setContactSource("campaign"); setContacts([]); setFileName(""); }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Campanha Existente
+                  </Button>
+                </div>
               </div>
+
+              {contactSource === "file" ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    A 1ª coluna deve ser o <strong>Nome</strong> e a 2ª o <strong>Número de telefone</strong>.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {fileName || "Selecionar planilha (.xlsx, .xls, .csv)"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Selecione uma campanha para importar os contatos dela.
+                  </p>
+                  <Select value={selectedCampaignId} onValueChange={handleImportFromCampaign}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Escolha uma campanha..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaigns.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.contact_count} contatos)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {loadingImport && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Importando...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {contacts.length > 0 && (
+                <p className="text-sm text-primary font-medium">
+                  ✓ {contacts.length} contatos carregados
+                </p>
+              )}
 
               {contacts.length > 0 && (
                 <div className="rounded-lg border border-border overflow-hidden max-h-48 overflow-y-auto">
