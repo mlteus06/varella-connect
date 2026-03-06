@@ -124,13 +124,31 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     reader.readAsBinaryString(file);
   };
 
+  const handleImportFromCampaign = async (campaignId: string) => {
+    setSelectedCampaignId(campaignId);
+    setLoadingImport(true);
+    const { data } = await supabase
+      .from("campaign_contacts")
+      .select("nome, telefone")
+      .eq("campaign_id", campaignId);
+    if (data && data.length > 0) {
+      setContacts(data);
+      const camp = campaigns.find((c) => c.id === campaignId);
+      setFileName(`Importado de "${camp?.name}"`);
+      toast.success(`${data.length} contatos importados.`);
+    } else {
+      toast.error("Nenhum contato encontrado nessa campanha.");
+    }
+    setLoadingImport(false);
+  };
+
   const handleCreateCampaign = async () => {
     if (!campaignName.trim()) {
       toast.error("Dê um nome para a campanha.");
       return;
     }
     if (contacts.length === 0) {
-      toast.error("Suba uma planilha com contatos.");
+      toast.error("Selecione uma planilha ou importe de uma campanha existente.");
       return;
     }
 
