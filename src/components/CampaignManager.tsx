@@ -42,6 +42,9 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [contactSource, setContactSource] = useState<"file" | "campaign">("file");
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [loadingImport, setLoadingImport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // View contacts state
