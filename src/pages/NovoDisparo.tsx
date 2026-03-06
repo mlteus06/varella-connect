@@ -154,6 +154,9 @@ export default function NovoDisparo() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="container max-w-2xl py-8 animate-fade-in space-y-6">
+        {/* Campanhas */}
+        <CampaignManager templates={templates} />
+
         {/* Formulário de cadastro */}
         <Card className="bg-card border-border">
           <CardHeader>
