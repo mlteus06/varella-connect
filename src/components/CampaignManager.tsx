@@ -352,7 +352,8 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                         <p key={i} className="text-xs text-muted-foreground">📄 {fn}</p>
                       ))}
                     </div>
-                  )}
+                   )}
+                </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
