@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Upload, Trash2, Users, Send, FileSpreadsheet, Eye } from "lucide-react";
+import { Loader2, Plus, Upload, Trash2, Users, Send, FileSpreadsheet, Eye, Copy } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -42,6 +42,9 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [contactSource, setContactSource] = useState<"file" | "campaign">("file");
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [loadingImport, setLoadingImport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // View contacts state
@@ -121,13 +124,31 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     reader.readAsBinaryString(file);
   };
 
+  const handleImportFromCampaign = async (campaignId: string) => {
+    setSelectedCampaignId(campaignId);
+    setLoadingImport(true);
+    const { data } = await supabase
+      .from("campaign_contacts")
+      .select("nome, telefone")
+      .eq("campaign_id", campaignId);
+    if (data && data.length > 0) {
+      setContacts(data);
+      const camp = campaigns.find((c) => c.id === campaignId);
+      setFileName(`Importado de "${camp?.name}"`);
+      toast.success(`${data.length} contatos importados.`);
+    } else {
+      toast.error("Nenhum contato encontrado nessa campanha.");
+    }
+    setLoadingImport(false);
+  };
+
   const handleCreateCampaign = async () => {
     if (!campaignName.trim()) {
       toast.error("Dê um nome para a campanha.");
       return;
     }
     if (contacts.length === 0) {
-      toast.error("Suba uma planilha com contatos.");
+      toast.error("Selecione uma planilha ou importe de uma campanha existente.");
       return;
     }
 
@@ -162,6 +183,8 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     setCampaignName("");
     setContacts([]);
     setFileName("");
+    setContactSource("file");
+    setSelectedCampaignId("");
     setCreateOpen(false);
     fetchCampaigns();
     setSaving(false);
@@ -275,32 +298,84 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Planilha de Contatos</Label>
-                <p className="text-xs text-muted-foreground">
-                  A 1ª coluna deve ser o <strong>Nome</strong> e a 2ª o <strong>Número de telefone</strong>.
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4" />
-                  {fileName || "Selecionar planilha (.xlsx, .xls, .csv)"}
-                </Button>
-                {contacts.length > 0 && (
-                  <p className="text-sm text-primary font-medium">
-                    ✓ {contacts.length} contatos carregados
-                  </p>
-                )}
+                <Label>Origem dos Contatos</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={contactSource === "file" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 gap-2"
+                    onClick={() => { setContactSource("file"); setContacts([]); setFileName(""); setSelectedCampaignId(""); }}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Nova Planilha
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={contactSource === "campaign" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 gap-2"
+                    disabled={campaigns.length === 0}
+                    onClick={() => { setContactSource("campaign"); setContacts([]); setFileName(""); }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Campanha Existente
+                  </Button>
+                </div>
               </div>
+
+              {contactSource === "file" ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    A 1ª coluna deve ser o <strong>Nome</strong> e a 2ª o <strong>Número de telefone</strong>.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {fileName || "Selecionar planilha (.xlsx, .xls, .csv)"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Selecione uma campanha para importar os contatos dela.
+                  </p>
+                  <Select value={selectedCampaignId} onValueChange={handleImportFromCampaign}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Escolha uma campanha..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaigns.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} ({c.contact_count} contatos)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {loadingImport && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Importando...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {contacts.length > 0 && (
+                <p className="text-sm text-primary font-medium">
+                  ✓ {contacts.length} contatos carregados
+                </p>
+              )}
 
               {contacts.length > 0 && (
                 <div className="rounded-lg border border-border overflow-hidden max-h-48 overflow-y-auto">
