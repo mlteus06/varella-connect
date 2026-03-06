@@ -32,6 +32,7 @@ interface Contact {
 }
 
 export function CampaignManager({ templates }: { templates: Template[] }) {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
