@@ -40,7 +40,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
   // Create campaign state
   const [campaignName, setCampaignName] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [fileName, setFileName] = useState("");
+  const [fileNames, setFileNames] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [contactSource, setContactSource] = useState<"file" | "campaign">("file");
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
@@ -88,7 +88,6 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -97,7 +96,6 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        // Skip header row if first cell looks like a header
         const startIdx = rows.length > 0 && typeof rows[0][0] === "string" &&
           (rows[0][0].toLowerCase().includes("nome") || rows[0][0].toLowerCase().includes("name")) ? 1 : 0;
 
@@ -111,17 +109,20 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
           });
         }
 
-        setContacts(parsed);
         if (parsed.length === 0) {
           toast.error("Nenhum contato encontrado na planilha.");
         } else {
-          toast.success(`${parsed.length} contatos encontrados.`);
+          setContacts((prev) => [...prev, ...parsed]);
+          setFileNames((prev) => [...prev, file.name]);
+          toast.success(`${parsed.length} contatos adicionados de "${file.name}".`);
         }
       } catch {
         toast.error("Erro ao ler a planilha. Verifique o formato.");
       }
     };
     reader.readAsBinaryString(file);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
   };
 
   const handleImportFromCampaign = async (campaignId: string) => {
@@ -134,7 +135,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     if (data && data.length > 0) {
       setContacts(data);
       const camp = campaigns.find((c) => c.id === campaignId);
-      setFileName(`Importado de "${camp?.name}"`);
+      setFileNames([`Importado de "${camp?.name}"`]);
       toast.success(`${data.length} contatos importados.`);
     } else {
       toast.error("Nenhum contato encontrado nessa campanha.");
@@ -182,7 +183,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     toast.success(`Campanha "${campaignName}" criada com ${contacts.length} contatos!`);
     setCampaignName("");
     setContacts([]);
-    setFileName("");
+    setFileNames([]);
     setContactSource("file");
     setSelectedCampaignId("");
     setCreateOpen(false);
@@ -305,7 +306,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                     variant={contactSource === "file" ? "default" : "outline"}
                     size="sm"
                     className="flex-1 gap-2"
-                    onClick={() => { setContactSource("file"); setContacts([]); setFileName(""); setSelectedCampaignId(""); }}
+                    onClick={() => { setContactSource("file"); setContacts([]); setFileNames([]); setSelectedCampaignId(""); }}
                   >
                     <Upload className="h-4 w-4" />
                     Nova Planilha
@@ -316,7 +317,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                     size="sm"
                     className="flex-1 gap-2"
                     disabled={campaigns.length === 0}
-                    onClick={() => { setContactSource("campaign"); setContacts([]); setFileName(""); }}
+                    onClick={() => { setContactSource("campaign"); setContacts([]); setFileNames([]); }}
                   >
                     <Copy className="h-4 w-4" />
                     Campanha Existente
@@ -343,8 +344,15 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-4 w-4" />
-                    {fileName || "Selecionar planilha (.xlsx, .xls, .csv)"}
+                    Adicionar planilha (.xlsx, .xls, .csv)
                   </Button>
+                  {fileNames.length > 0 && (
+                    <div className="space-y-1">
+                      {fileNames.map((fn, i) => (
+                        <p key={i} className="text-xs text-muted-foreground">📄 {fn}</p>
+                      ))}
+                    </div>
+                   )}
                 </div>
               ) : (
                 <div className="space-y-2">
