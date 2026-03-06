@@ -40,7 +40,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
   // Create campaign state
   const [campaignName, setCampaignName] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [fileName, setFileName] = useState("");
+  const [fileNames, setFileNames] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [contactSource, setContactSource] = useState<"file" | "campaign">("file");
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
