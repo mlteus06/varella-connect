@@ -183,7 +183,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     toast.success(`Campanha "${campaignName}" criada com ${contacts.length} contatos!`);
     setCampaignName("");
     setContacts([]);
-    setFileName("");
+    setFileNames([]);
     setContactSource("file");
     setSelectedCampaignId("");
     setCreateOpen(false);
