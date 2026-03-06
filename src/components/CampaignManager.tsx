@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Upload, Trash2, Users, Send, FileSpreadsheet, Eye } from "lucide-react";
+import { Loader2, Plus, Upload, Trash2, Users, Send, FileSpreadsheet, Eye, Copy } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
