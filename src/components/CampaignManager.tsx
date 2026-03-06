@@ -88,7 +88,6 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -97,7 +96,6 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        // Skip header row if first cell looks like a header
         const startIdx = rows.length > 0 && typeof rows[0][0] === "string" &&
           (rows[0][0].toLowerCase().includes("nome") || rows[0][0].toLowerCase().includes("name")) ? 1 : 0;
 
@@ -111,15 +109,21 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
           });
         }
 
-        setContacts(parsed);
         if (parsed.length === 0) {
           toast.error("Nenhum contato encontrado na planilha.");
         } else {
-          toast.success(`${parsed.length} contatos encontrados.`);
+          setContacts((prev) => [...prev, ...parsed]);
+          setFileNames((prev) => [...prev, file.name]);
+          toast.success(`${parsed.length} contatos adicionados de "${file.name}".`);
         }
       } catch {
         toast.error("Erro ao ler a planilha. Verifique o formato.");
       }
+    };
+    reader.readAsBinaryString(file);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  };
     };
     reader.readAsBinaryString(file);
   };
