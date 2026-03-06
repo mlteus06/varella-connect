@@ -306,7 +306,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                     variant={contactSource === "file" ? "default" : "outline"}
                     size="sm"
                     className="flex-1 gap-2"
-                    onClick={() => { setContactSource("file"); setContacts([]); setFileName(""); setSelectedCampaignId(""); }}
+                    onClick={() => { setContactSource("file"); setContacts([]); setFileNames([]); setSelectedCampaignId(""); }}
                   >
                     <Upload className="h-4 w-4" />
                     Nova Planilha
