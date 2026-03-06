@@ -317,7 +317,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                     size="sm"
                     className="flex-1 gap-2"
                     disabled={campaigns.length === 0}
-                    onClick={() => { setContactSource("campaign"); setContacts([]); setFileName(""); }}
+                    onClick={() => { setContactSource("campaign"); setContacts([]); setFileNames([]); }}
                   >
                     <Copy className="h-4 w-4" />
                     Campanha Existente
