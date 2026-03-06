@@ -45,6 +45,14 @@ const App = () => (
               </AuthGuard>
             }
           />
+          <Route
+            path="/campanha/:id"
+            element={
+              <AuthGuard>
+                <CampaignDashboard />
+              </AuthGuard>
+            }
+          />
           <Route path="/" element={<Navigate to="/auth" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
