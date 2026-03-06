@@ -22,6 +22,7 @@ interface Disparo {
   mensagem: string | null;
   status: string;
   created_at: string;
+  respondeu?: boolean | null;
 }
 
 type FilterKey = "today" | "yesterday" | "7d" | "15d" | "30d" | "custom";
