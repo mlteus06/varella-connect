@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import NovoDisparo from "./pages/NovoDisparo";
+import CampaignDashboard from "./pages/CampaignDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,14 @@ const App = () => (
             element={
               <AuthGuard>
                 <NovoDisparo />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/campanha/:id"
+            element={
+              <AuthGuard>
+                <CampaignDashboard />
               </AuthGuard>
             }
           />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createExternalClient } from "@/lib/supabase-client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface Contact {
 }
 
 export function CampaignManager({ templates }: { templates: Template[] }) {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -444,10 +446,13 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                 className="rounded-lg border border-border bg-secondary/50 p-4 flex items-center justify-between"
               >
                 <div className="space-y-1">
-                  <p className="font-medium text-sm text-foreground flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/campanha/${c.id}`)}
+                    className="font-medium text-sm text-foreground flex items-center gap-2 hover:text-primary transition-colors text-left"
+                  >
                     <FileSpreadsheet className="h-4 w-4 text-primary" />
                     {c.name}
-                  </p>
+                  </button>
                   <p className="text-xs text-muted-foreground">
                     {c.contact_count} contatos • {new Date(c.created_at).toLocaleDateString("pt-BR")}
                   </p>
