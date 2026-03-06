@@ -135,7 +135,7 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     if (data && data.length > 0) {
       setContacts(data);
       const camp = campaigns.find((c) => c.id === campaignId);
-      setFileName(`Importado de "${camp?.name}"`);
+      setFileNames([`Importado de "${camp?.name}"`]);
       toast.success(`${data.length} contatos importados.`);
     } else {
       toast.error("Nenhum contato encontrado nessa campanha.");
