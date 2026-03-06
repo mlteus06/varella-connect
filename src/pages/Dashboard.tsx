@@ -176,10 +176,12 @@ export default function Dashboard() {
           </Popover>
         </div>
 
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Total de Registros" value={totalRegistros} icon={Database} />
           <StatCard label="Pendentes" value={totalPendentes} icon={Clock} />
           <StatCard label="Enviados" value={totalEnviados} icon={CheckCircle} />
+          <StatCard label="Responderam" value={totalResponderam} icon={MessageCircle} />
+          <StatCard label="Taxa de Resposta" value={`${taxaResposta}%`} icon={Percent} />
         </div>
 
         <Card className="bg-card border-border">
