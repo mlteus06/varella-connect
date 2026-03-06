@@ -218,6 +218,16 @@ export default function Dashboard() {
                       <TableCell>
                         <StatusBadge status={d.status} />
                       </TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                          d.respondeu
+                            ? "bg-green-500/10 text-green-500"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {d.respondeu ? "Sim" : "Não"}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {new Date(d.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
