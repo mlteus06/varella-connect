@@ -205,6 +205,7 @@ export default function Dashboard() {
                     <TableHead className="text-muted-foreground">Telefone</TableHead>
                     <TableHead className="text-muted-foreground">Mensagem</TableHead>
                     <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground">Respondeu</TableHead>
                     <TableHead className="text-muted-foreground text-right">Data</TableHead>
                   </TableRow>
                 </TableHeader>
