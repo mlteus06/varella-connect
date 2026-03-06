@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createExternalClient, getSupabaseConfig, getLastMessage, saveLastMessage, loadConfigFromCloud } from "@/lib/supabase-client";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
+import { CampaignManager } from "@/components/CampaignManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,6 +154,9 @@ export default function NovoDisparo() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="container max-w-2xl py-8 animate-fade-in space-y-6">
+        {/* Campanhas */}
+        <CampaignManager templates={templates} />
+
         {/* Formulário de cadastro */}
         <Card className="bg-card border-border">
           <CardHeader>
