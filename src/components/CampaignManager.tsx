@@ -344,9 +344,15 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-4 w-4" />
-                    {fileName || "Selecionar planilha (.xlsx, .xls, .csv)"}
+                    Adicionar planilha (.xlsx, .xls, .csv)
                   </Button>
-                </div>
+                  {fileNames.length > 0 && (
+                    <div className="space-y-1">
+                      {fileNames.map((fn, i) => (
+                        <p key={i} className="text-xs text-muted-foreground">📄 {fn}</p>
+                      ))}
+                    </div>
+                  )}
               ) : (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
