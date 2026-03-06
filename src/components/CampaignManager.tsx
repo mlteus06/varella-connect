@@ -124,9 +124,6 @@ export function CampaignManager({ templates }: { templates: Template[] }) {
     // Reset input so same file can be re-selected
     e.target.value = "";
   };
-    };
-    reader.readAsBinaryString(file);
-  };
 
   const handleImportFromCampaign = async (campaignId: string) => {
     setSelectedCampaignId(campaignId);
