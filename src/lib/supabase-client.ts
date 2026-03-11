@@ -86,14 +86,9 @@ export async function saveLastMessage(message: string) {
     .eq("user_id", user.id);
 }
 
-export async function initializeDisparosTable(client: SupabaseClient): Promise<{ success: boolean; message: string }> {
+export async function initializeExternalTables(client: SupabaseClient): Promise<{ success: boolean; message: string }> {
   try {
-    const { error: checkError } = await client.from("disparos").select("id").limit(1);
-    
-    if (!checkError) {
-      return { success: true, message: "Estrutura já existente. Conexão validada com sucesso." };
-    }
-
+    // Try creating all tables via exec_sql RPC
     const { error: createError } = await client.rpc("exec_sql", {
       query: `
         CREATE TABLE IF NOT EXISTS disparos (
@@ -102,19 +97,81 @@ export async function initializeDisparosTable(client: SupabaseClient): Promise<{
           telefone text NOT NULL,
           mensagem text DEFAULT 'Olá',
           status text DEFAULT 'PENDENTE',
+          created_at timestamp with time zone DEFAULT now(),
+          respondeu boolean DEFAULT false
+        );
+
+        CREATE TABLE IF NOT EXISTS contact_lists (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          name text NOT NULL,
+          type text NOT NULL DEFAULT 'spreadsheet',
           created_at timestamp with time zone DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS base_contacts (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          list_id uuid REFERENCES contact_lists(id) ON DELETE CASCADE,
+          nome text,
+          telefone text NOT NULL,
+          created_at timestamp with time zone DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS message_templates (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          title text NOT NULL,
+          content text NOT NULL,
+          created_at timestamp with time zone DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS segmentation_lists (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          name text NOT NULL,
+          created_at timestamp with time zone DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS segmentation_sources (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          segmentation_id uuid REFERENCES segmentation_lists(id) ON DELETE CASCADE,
+          contact_list_id uuid REFERENCES contact_lists(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS campaigns (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          name text NOT NULL,
+          status text NOT NULL DEFAULT 'pendente',
+          template_id uuid REFERENCES message_templates(id) ON DELETE SET NULL,
+          created_at timestamp with time zone DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS campaign_sources (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          campaign_id uuid REFERENCES campaigns(id) ON DELETE CASCADE,
+          source_type text NOT NULL,
+          source_id uuid NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS campaign_contacts (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          campaign_id uuid REFERENCES campaigns(id) ON DELETE CASCADE,
+          nome text,
+          telefone text NOT NULL
         );
       `
     });
 
     if (createError) {
+      // If exec_sql doesn't exist, check if tables already exist
+      const { error: checkError } = await client.from("disparos").select("id").limit(1);
+      if (!checkError) {
+        return { success: true, message: "Conexão validada com sucesso." };
+      }
       return {
         success: false,
-        message: "Não foi possível criar a tabela automaticamente. Crie a tabela 'disparos' manualmente no seu Supabase com os campos: id (uuid), nome (text), telefone (text NOT NULL), mensagem (text DEFAULT 'Olá'), status (text DEFAULT 'PENDENTE'), created_at (timestamptz DEFAULT now())."
+        message: "Não foi possível criar as tabelas automaticamente. Crie a função 'exec_sql' no seu Supabase ou crie as tabelas manualmente: disparos, contact_lists, base_contacts, message_templates, segmentation_lists, segmentation_sources, campaigns, campaign_sources, campaign_contacts."
       };
     }
 
-    return { success: true, message: "Estrutura criada com sucesso." };
+    return { success: true, message: "Estrutura criada com sucesso!" };
   } catch (err) {
     return { success: false, message: "Erro na conexão. Verifique suas credenciais." };
   }

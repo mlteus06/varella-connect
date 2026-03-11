@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
-import { saveConfigToCloud, initializeDisparosTable } from "@/lib/supabase-client";
+import { saveConfigToCloud, initializeExternalTables } from "@/lib/supabase-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +38,7 @@ export default function Onboarding() {
       // Save to Cloud DB
       await saveConfigToCloud(url.trim(), apiKey.trim());
 
-      const result = await initializeDisparosTable(client);
+      const result = await initializeExternalTables(client);
       setFeedback({ type: result.success ? "success" : "error", message: result.message });
 
       if (result.success) {
@@ -71,9 +71,8 @@ export default function Onboarding() {
               Integração Supabase
             </CardTitle>
             <CardDescription className="text-muted-foreground">
-              Informe as credenciais do seu projeto Supabase. 
-              A tabela <code className="rounded bg-secondary px-1.5 py-0.5 text-xs font-mono text-foreground">disparos</code> será 
-              criada automaticamente caso não exista.
+              Informe as credenciais do seu projeto Supabase.
+              Todas as tabelas necessárias serão criadas automaticamente.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -105,8 +104,7 @@ export default function Onboarding() {
                 <div className="space-y-1 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground">O que será criado</p>
                   <p>
-                    Tabela <code className="text-primary font-mono">disparos</code> com os campos:
-                    id (uuid), nome (text), telefone (text), mensagem (text), status (text), created_at (timestamp).
+                    Tabelas: <code className="text-primary font-mono">disparos</code>, <code className="text-primary font-mono">contact_lists</code>, <code className="text-primary font-mono">base_contacts</code>, <code className="text-primary font-mono">message_templates</code>, <code className="text-primary font-mono">campaigns</code>, <code className="text-primary font-mono">segmentation_lists</code> e tabelas auxiliares.
                   </p>
                 </div>
               </div>

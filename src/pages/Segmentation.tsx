@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
+import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface ContactList {
   id: string;
@@ -32,14 +32,13 @@ export default function Segmentation() {
   const [segments, setSegments] = useState<SegmentationList[]>([]);
   const [contactLists, setContactLists] = useState<ContactList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [client, setClient] = useState<SupabaseClient | null>(null);
 
-  // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [segName, setSegName] = useState("");
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // View dialog
   const [viewOpen, setViewOpen] = useState(false);
   const [viewSegment, setViewSegment] = useState<SegmentationList | null>(null);
 
@@ -48,16 +47,22 @@ export default function Segmentation() {
       let config = getSupabaseConfig();
       if (!config) config = await loadConfigFromCloud();
       if (!config) { navigate("/onboarding"); return; }
-      fetchData();
+      const ext = createExternalClient();
+      if (!ext) { navigate("/onboarding"); return; }
+      setClient(ext);
     };
     init();
   }, [navigate]);
 
+  useEffect(() => {
+    if (client) fetchData();
+  }, [client]);
+
   const fetchData = async () => {
+    if (!client) return;
     setLoading(true);
 
-    // Fetch contact lists with counts
-    const { data: listsData } = await supabase
+    const { data: listsData } = await client
       .from("contact_lists")
       .select("id, name, type")
       .order("created_at", { ascending: false });
@@ -65,7 +70,7 @@ export default function Segmentation() {
     if (listsData) {
       const withCounts = await Promise.all(
         listsData.map(async (l: any) => {
-          const { count } = await supabase
+          const { count } = await client
             .from("base_contacts")
             .select("*", { count: "exact", head: true })
             .eq("list_id", l.id);
@@ -75,8 +80,7 @@ export default function Segmentation() {
       setContactLists(withCounts);
     }
 
-    // Fetch segmentation lists with sources
-    const { data: segsData } = await supabase
+    const { data: segsData } = await client
       .from("segmentation_lists")
       .select("id, name, created_at")
       .order("created_at", { ascending: false });
@@ -84,7 +88,7 @@ export default function Segmentation() {
     if (segsData) {
       const segsWithSources = await Promise.all(
         segsData.map(async (s: any) => {
-          const { data: sources } = await supabase
+          const { data: sources } = await client
             .from("segmentation_sources")
             .select("contact_list_id")
             .eq("segmentation_id", s.id);
@@ -97,7 +101,7 @@ export default function Segmentation() {
               const list = listsData?.find((l: any) => l.id === src.contact_list_id);
               if (list) {
                 sourceDetails.push({ id: list.id, name: list.name, type: list.type });
-                const { count } = await supabase
+                const { count } = await client
                   .from("base_contacts")
                   .select("*", { count: "exact", head: true })
                   .eq("list_id", list.id);
@@ -122,16 +126,15 @@ export default function Segmentation() {
   };
 
   const handleCreate = async () => {
+    if (!client) return;
     if (!segName.trim()) { toast.error("Dê um nome para a segmentação."); return; }
     if (selectedListIds.length === 0) { toast.error("Selecione pelo menos uma lista."); return; }
 
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
 
-    const { data: seg, error } = await supabase
+    const { data: seg, error } = await client
       .from("segmentation_lists")
-      .insert({ user_id: user.id, name: segName.trim() })
+      .insert({ name: segName.trim() })
       .select("id")
       .single();
 
@@ -142,7 +145,7 @@ export default function Segmentation() {
       contact_list_id: listId,
     }));
 
-    await supabase.from("segmentation_sources").insert(sources);
+    await client.from("segmentation_sources").insert(sources);
 
     toast.success(`Segmentação "${segName}" criada!`);
     setSegName("");
@@ -153,7 +156,8 @@ export default function Segmentation() {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("segmentation_lists").delete().eq("id", id);
+    if (!client) return;
+    const { error } = await client.from("segmentation_lists").delete().eq("id", id);
     if (!error) {
       setSegments((prev) => prev.filter((s) => s.id !== id));
       toast.success("Segmentação excluída.");
@@ -296,7 +300,6 @@ export default function Segmentation() {
           </CardContent>
         </Card>
 
-        {/* View segment dialog */}
         <Dialog open={viewOpen} onOpenChange={setViewOpen}>
           <DialogContent className="bg-card border-border sm:max-w-md">
             <DialogHeader>

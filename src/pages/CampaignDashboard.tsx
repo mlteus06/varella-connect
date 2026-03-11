@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
 import { StatCard } from "@/components/StatCard";
@@ -54,14 +53,19 @@ export default function CampaignDashboard() {
       if (!config) { navigate("/onboarding"); return; }
       if (!id) { navigate("/campanhas"); return; }
 
-      const { data: campaign } = await supabase
+      const client = createExternalClient();
+      if (!client) { navigate("/onboarding"); return; }
+
+      // Get campaign name
+      const { data: campaign } = await client
         .from("campaigns")
         .select("name")
         .eq("id", id)
         .single();
       if (campaign) setCampaignName(campaign.name);
 
-      const { data: contacts } = await supabase
+      // Get campaign contacts
+      const { data: contacts } = await client
         .from("campaign_contacts")
         .select("telefone")
         .eq("campaign_id", id);
@@ -69,9 +73,6 @@ export default function CampaignDashboard() {
       if (!contacts || contacts.length === 0) { setLoading(false); return; }
 
       const phones = contacts.map((c: any) => c.telefone);
-
-      const client = createExternalClient();
-      if (!client) { setLoading(false); return; }
 
       const { data: allDisparos } = await client
         .from("disparos")

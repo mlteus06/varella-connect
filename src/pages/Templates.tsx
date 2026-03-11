@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
+import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Loader2, Plus, Trash2, FileText, Edit } from "lucide-react";
 import { toast } from "sonner";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface Template {
   id: string;
@@ -23,14 +23,13 @@ export default function Templates() {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [client, setClient] = useState<SupabaseClient | null>(null);
 
-  // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
   const [editTemplate, setEditTemplate] = useState<Template | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -42,14 +41,21 @@ export default function Templates() {
       let config = getSupabaseConfig();
       if (!config) config = await loadConfigFromCloud();
       if (!config) { navigate("/onboarding"); return; }
-      fetchTemplates();
+      const ext = createExternalClient();
+      if (!ext) { navigate("/onboarding"); return; }
+      setClient(ext);
     };
     init();
   }, [navigate]);
 
+  useEffect(() => {
+    if (client) fetchTemplates();
+  }, [client]);
+
   const fetchTemplates = async () => {
+    if (!client) return;
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await client
       .from("message_templates")
       .select("id, title, content, created_at")
       .order("created_at", { ascending: false });
@@ -58,14 +64,11 @@ export default function Templates() {
   };
 
   const handleCreate = async () => {
+    if (!client) return;
     if (!title.trim() || !content.trim()) { toast.error("Preencha título e conteúdo."); return; }
 
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
-
-    const { error } = await supabase.from("message_templates").insert({
-      user_id: user.id,
+    const { error } = await client.from("message_templates").insert({
       title: title.trim(),
       content: content.trim(),
     });
@@ -90,10 +93,10 @@ export default function Templates() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editTemplate || !editTitle.trim() || !editContent.trim()) { toast.error("Preencha título e conteúdo."); return; }
+    if (!client || !editTemplate || !editTitle.trim() || !editContent.trim()) { toast.error("Preencha título e conteúdo."); return; }
 
     setSavingEdit(true);
-    const { error } = await supabase
+    const { error } = await client
       .from("message_templates")
       .update({ title: editTitle.trim(), content: editContent.trim() })
       .eq("id", editTemplate.id);
@@ -109,7 +112,8 @@ export default function Templates() {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("message_templates").delete().eq("id", id);
+    if (!client) return;
+    const { error } = await client.from("message_templates").delete().eq("id", id);
     if (!error) {
       setTemplates((prev) => prev.filter((t) => t.id !== id));
       toast.success("Template excluído.");
@@ -213,7 +217,6 @@ export default function Templates() {
           </CardContent>
         </Card>
 
-        {/* Edit dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogContent className="bg-card border-border sm:max-w-lg">
             <DialogHeader>
