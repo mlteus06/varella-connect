@@ -369,10 +369,9 @@ export default function Contacts() {
           </div>
         </div>
 
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2">
           <StatCard label="Total de Contatos" value={totalContacts} icon={Database} />
           <StatCard label="Planilhas" value={lists.filter(l => l.type === "spreadsheet").length} icon={FileSpreadsheet} />
-          <StatCard label="Contatos Avulsos" value={lists.filter(l => l.type === "manual").reduce((acc, l) => acc + (l.contact_count || 0), 0)} icon={UserPlus} />
         </div>
 
         <Card className="bg-card border-border">
