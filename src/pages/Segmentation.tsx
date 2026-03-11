@@ -168,6 +168,15 @@ export default function Segmentation() {
     setSaving(false);
   };
 
+  const handleDelete = async (id: string) => {
+    if (!client) return;
+    const { error } = await client.from("segmentation_lists").delete().eq("id", id);
+    if (!error) {
+      setSegments((prev) => prev.filter((s) => s.id !== id));
+      toast.success("Segmentação excluída.");
+    }
+  };
+
   const handleEditOpen = (s: SegmentationList) => {
     setEditSegment(s);
     setEditUploadContacts([]);
