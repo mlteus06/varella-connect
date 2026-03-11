@@ -439,8 +439,71 @@ export default function Campaigns() {
                   )}
                 </div>
 
+                {/* Schedule campaign */}
+                <div className="space-y-3">
+                  <div
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => setIsScheduled(!isScheduled)}
+                  >
+                    <Checkbox
+                      checked={isScheduled}
+                      onCheckedChange={(checked) => setIsScheduled(!!checked)}
+                    />
+                    <Label className="cursor-pointer flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      Programar Campanha
+                    </Label>
+                  </div>
+
+                  {isScheduled && (
+                    <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Data do disparo</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !scheduledDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {scheduledDate ? format(scheduledDate, "dd/MM/yyyy") : "Selecione a data..."}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={scheduledDate}
+                              onSelect={setScheduledDate}
+                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Horário do disparo</Label>
+                        <Input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          className="bg-secondary border-border"
+                        />
+                      </div>
+                      {scheduledDate && (
+                        <p className="text-xs text-primary font-medium">
+                          ⏰ Agendado para {format(scheduledDate, "dd/MM/yyyy")} às {scheduledTime}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <Button onClick={handleCreateCampaign} disabled={saving} className="w-full">
-                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Disparando...</> : "Disparar Campanha"}
+                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Disparando...</> : isScheduled ? "Agendar Campanha" : "Disparar Campanha"}
                 </Button>
               </div>
             </DialogContent>
