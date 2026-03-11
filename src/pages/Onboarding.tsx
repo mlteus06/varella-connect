@@ -57,7 +57,7 @@ export default function Onboarding() {
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight">
             <span className="text-primary">Disparador</span>{" "}
-            <span className="text-foreground">Varella</span>
+            <span className="text-foreground">Inout</span>
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Conecte seu Supabase para iniciar.

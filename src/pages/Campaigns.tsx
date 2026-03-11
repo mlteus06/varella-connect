@@ -308,6 +308,7 @@ export default function Campaigns() {
       const template = templates.find((t) => t.id === selectedTemplateId);
       if (template) {
         const disparos = contactsArray.map((c) => ({
+          campaign_id: campaign.id,
           nome: c.nome,
           telefone: c.telefone,
           mensagem: template.content,
