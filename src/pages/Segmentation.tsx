@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus, Pencil, Upload } from "lucide-react";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 

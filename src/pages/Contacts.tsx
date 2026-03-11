@@ -294,7 +294,7 @@ export default function Contacts() {
               <DialogTrigger asChild>
                 <Button className="gap-2">
                   <Upload className="h-4 w-4" />
-                  Subir Planilha
+                  Importar Planilha
                 </Button>
               </DialogTrigger>
               <DialogContent className="bg-card border-border sm:max-w-lg">
