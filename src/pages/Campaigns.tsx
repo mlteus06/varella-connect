@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Plus, Trash2, Megaphone, FileSpreadsheet, Layers, Send, Clock, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Loader2, Plus, Trash2, Megaphone, FileSpreadsheet, Layers, Send, Clock, CheckCircle, AlertCircle, ChevronDown, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -57,6 +61,9 @@ export default function Campaigns() {
   const [selectedSegIds, setSelectedSegIds] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
+  const [scheduledTime, setScheduledTime] = useState("09:00");
 
   useEffect(() => {
     const init = async () => {
@@ -167,6 +174,8 @@ export default function Campaigns() {
         return <Badge className="bg-green-500/10 text-green-500 border-none text-xs">Enviado</Badge>;
       case "enviando":
         return <Badge className="bg-blue-500/10 text-blue-500 border-none text-xs">Enviando</Badge>;
+      case "agendado":
+        return <Badge className="bg-amber-500/10 text-amber-500 border-none text-xs flex items-center gap-1"><Clock className="h-3 w-3" />Agendado</Badge>;
       default:
         return <Badge className="bg-status-pending text-status-pending-foreground border-none text-xs">Pendente</Badge>;
     }
@@ -180,13 +189,25 @@ export default function Campaigns() {
 
     setSaving(true);
 
+    // Build scheduled_at if scheduling
+    let scheduledAt: string | null = null;
+    if (isScheduled) {
+      if (!scheduledDate) { toast.error("Selecione a data do agendamento."); setSaving(false); return; }
+      const [hours, minutes] = scheduledTime.split(":").map(Number);
+      const dt = new Date(scheduledDate);
+      dt.setHours(hours, minutes, 0, 0);
+      if (dt <= new Date()) { toast.error("A data/hora deve ser no futuro."); setSaving(false); return; }
+      scheduledAt = dt.toISOString();
+    }
+
     // Create campaign
     const { data: campaign, error } = await client
       .from("campaigns")
       .insert({
         name: campaignName.trim(),
-        status: "pendente",
+        status: isScheduled ? "agendado" : "pendente",
         template_id: selectedTemplateId,
+        scheduled_at: scheduledAt,
       })
       .select("id")
       .single();
@@ -245,27 +266,35 @@ export default function Campaigns() {
       await client.from("campaign_contacts").insert(batch);
     }
 
-    // Create disparos
-    const template = templates.find((t) => t.id === selectedTemplateId);
-    if (template) {
-      const disparos = contactsArray.map((c) => ({
-        nome: c.nome,
-        telefone: c.telefone,
-        mensagem: template.content,
-        status: "PENDENTE",
-      }));
+    // Create disparos only if NOT scheduled
+    if (!isScheduled) {
+      const template = templates.find((t) => t.id === selectedTemplateId);
+      if (template) {
+        const disparos = contactsArray.map((c) => ({
+          nome: c.nome,
+          telefone: c.telefone,
+          mensagem: template.content,
+          status: "PENDENTE",
+        }));
 
-      for (let i = 0; i < disparos.length; i += batchSize) {
-        const batch = disparos.slice(i, i + batchSize);
-        await client.from("disparos").insert(batch);
+        for (let i = 0; i < disparos.length; i += batchSize) {
+          const batch = disparos.slice(i, i + batchSize);
+          await client.from("disparos").insert(batch);
+        }
       }
     }
 
-    toast.success(`Campanha "${campaignName}" criada com ${contactsArray.length} contatos!`);
+    const successMsg = isScheduled
+      ? `Campanha "${campaignName}" agendada para ${format(scheduledDate!, "dd/MM/yyyy")} às ${scheduledTime}!`
+      : `Campanha "${campaignName}" criada com ${contactsArray.length} contatos!`;
+    toast.success(successMsg);
     setCampaignName("");
     setSelectedListIds([]);
     setSelectedSegIds([]);
     setSelectedTemplateId("");
+    setIsScheduled(false);
+    setScheduledDate(undefined);
+    setScheduledTime("09:00");
     setCreateOpen(false);
     fetchData();
     setSaving(false);
@@ -412,8 +441,71 @@ export default function Campaigns() {
                   )}
                 </div>
 
+                {/* Schedule campaign */}
+                <div className="space-y-3">
+                  <div
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => setIsScheduled(!isScheduled)}
+                  >
+                    <Checkbox
+                      checked={isScheduled}
+                      onCheckedChange={(checked) => setIsScheduled(!!checked)}
+                    />
+                    <Label className="cursor-pointer flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      Programar Campanha
+                    </Label>
+                  </div>
+
+                  {isScheduled && (
+                    <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Data do disparo</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !scheduledDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {scheduledDate ? format(scheduledDate, "dd/MM/yyyy") : "Selecione a data..."}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={scheduledDate}
+                              onSelect={setScheduledDate}
+                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Horário do disparo</Label>
+                        <Input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          className="bg-secondary border-border"
+                        />
+                      </div>
+                      {scheduledDate && (
+                        <p className="text-xs text-primary font-medium">
+                          ⏰ Agendado para {format(scheduledDate, "dd/MM/yyyy")} às {scheduledTime}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <Button onClick={handleCreateCampaign} disabled={saving} className="w-full">
-                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Disparando...</> : "Disparar Campanha"}
+                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Disparando...</> : isScheduled ? "Agendar Campanha" : "Disparar Campanha"}
                 </Button>
               </div>
             </DialogContent>

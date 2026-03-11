@@ -112,6 +112,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          scheduled_at: string | null
           status: string
           template_id: string | null
           user_id: string
@@ -120,6 +121,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          scheduled_at?: string | null
           status?: string
           template_id?: string | null
           user_id: string
@@ -128,6 +130,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          scheduled_at?: string | null
           status?: string
           template_id?: string | null
           user_id?: string
