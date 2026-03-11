@@ -168,13 +168,89 @@ export default function Segmentation() {
     setSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!client) return;
-    const { error } = await client.from("segmentation_lists").delete().eq("id", id);
-    if (!error) {
-      setSegments((prev) => prev.filter((s) => s.id !== id));
-      toast.success("Segmentação excluída.");
+  const handleEditOpen = (s: SegmentationList) => {
+    setEditSegment(s);
+    setEditUploadContacts([]);
+    setEditFileName("");
+    setEditListName("");
+    setEditManualNome("");
+    setEditManualTelefone("");
+    setEditOpen(true);
+  };
+
+  const handleEditFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const startIdx = rows.length > 0 && typeof rows[0][0] === "string" &&
+          (rows[0][0].toLowerCase().includes("nome") || rows[0][0].toLowerCase().includes("name")) ? 1 : 0;
+        const parsed: { nome: string | null; telefone: string }[] = [];
+        for (let i = startIdx; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[1]) continue;
+          parsed.push({ nome: row[0] ? String(row[0]).trim() : null, telefone: String(row[1]).trim() });
+        }
+        if (parsed.length === 0) { toast.error("Nenhum contato encontrado."); }
+        else { setEditUploadContacts(parsed); setEditFileName(file.name); if (!editListName) setEditListName(file.name.replace(/\.(xlsx|xls|csv)$/i, "")); toast.success(`${parsed.length} contatos encontrados.`); }
+      } catch { toast.error("Erro ao ler a planilha."); }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";
+  };
+
+  const handleEditAddSpreadsheet = async () => {
+    if (!client || !editSegment) return;
+    if (!editListName.trim()) { toast.error("Dê um nome para a planilha."); return; }
+    if (editUploadContacts.length === 0) { toast.error("Selecione uma planilha."); return; }
+    setEditSaving(true);
+
+    const { data: list } = await client.from("contact_lists").insert({ name: editListName.trim(), type: "spreadsheet" }).select("id").single();
+    if (!list) { toast.error("Erro ao salvar."); setEditSaving(false); return; }
+
+    const batchSize = 500;
+    for (let i = 0; i < editUploadContacts.length; i += batchSize) {
+      const batch = editUploadContacts.slice(i, i + batchSize).map((c) => ({ list_id: list.id, nome: c.nome, telefone: c.telefone }));
+      await client.from("base_contacts").insert(batch);
     }
+
+    await client.from("segmentation_sources").insert({ segmentation_id: editSegment.id, contact_list_id: list.id });
+    toast.success(`Planilha "${editListName}" adicionada à segmentação!`);
+    setEditUploadContacts([]); setEditFileName(""); setEditListName("");
+    fetchData();
+    setEditSaving(false);
+  };
+
+  const handleEditAddManual = async () => {
+    if (!client || !editSegment) return;
+    if (!editManualTelefone.trim()) { toast.error("Informe o telefone."); return; }
+    setEditSaving(true);
+
+    // Find or create "Contatos Avulsos" list linked to this segmentation
+    let { data: manualList } = await client.from("contact_lists").select("id").eq("type", "manual").maybeSingle();
+    if (!manualList) {
+      const { data: newList } = await client.from("contact_lists").insert({ name: "Contatos Avulsos", type: "manual" }).select("id").single();
+      manualList = newList;
+    }
+    if (!manualList) { toast.error("Erro ao criar lista."); setEditSaving(false); return; }
+
+    await client.from("base_contacts").insert({ list_id: manualList.id, nome: editManualNome.trim() || null, telefone: editManualTelefone.trim() });
+
+    // Ensure this list is linked to the segmentation
+    const { data: existing } = await client.from("segmentation_sources").select("id").eq("segmentation_id", editSegment.id).eq("contact_list_id", manualList.id).maybeSingle();
+    if (!existing) {
+      await client.from("segmentation_sources").insert({ segmentation_id: editSegment.id, contact_list_id: manualList.id });
+    }
+
+    toast.success("Contato adicionado à segmentação!");
+    setEditManualNome(""); setEditManualTelefone("");
+    fetchData();
+    setEditSaving(false);
   };
 
   return (
