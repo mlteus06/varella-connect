@@ -61,6 +61,9 @@ export default function Campaigns() {
   const [selectedSegIds, setSelectedSegIds] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
+  const [scheduledTime, setScheduledTime] = useState("09:00");
 
   useEffect(() => {
     const init = async () => {
