@@ -44,6 +44,17 @@ export default function Segmentation() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewSegment, setViewSegment] = useState<SegmentationList | null>(null);
 
+  // Edit dialog
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSegment, setEditSegment] = useState<SegmentationList | null>(null);
+  const [editUploadContacts, setEditUploadContacts] = useState<{ nome: string | null; telefone: string }[]>([]);
+  const [editFileName, setEditFileName] = useState("");
+  const [editListName, setEditListName] = useState("");
+  const [editManualNome, setEditManualNome] = useState("");
+  const [editManualTelefone, setEditManualTelefone] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     const init = async () => {
       let config = getSupabaseConfig();
