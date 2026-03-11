@@ -332,13 +332,23 @@ export default function Segmentation() {
             <h2 className="text-2xl font-bold text-foreground">Segmentação</h2>
             <p className="text-sm text-muted-foreground">Crie listas de segmentação combinando planilhas e contatos da sua base.</p>
           </div>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nova Segmentação
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleCreateHotLeads}
+              disabled={creatingHot}
+            >
+              {creatingHot ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
+              Criar Lista Com Leads Quentes
+            </Button>
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nova Segmentação
+                </Button>
+              </DialogTrigger>
             <DialogContent className="bg-card border-border sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Criar Segmentação</DialogTitle>
