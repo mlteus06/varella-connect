@@ -15,7 +15,7 @@
     --popover: 240 5% 11%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 354 83% 38%;
+    --primary: 25 95% 50%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 4% 16%;
@@ -24,7 +24,7 @@
     --muted: 240 4% 16%;
     --muted-foreground: 0 0% 71%;
 
-    --accent: 354 100% 44%;
+    --accent: 25 100% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -32,11 +32,11 @@
 
     --border: 240 4% 20%;
     --input: 240 4% 20%;
-    --ring: 354 83% 38%;
+    --ring: 25 95% 50%;
 
     --radius: 0.5rem;
 
-    --status-pending: 0 100% 27%;
+    --status-pending: 25 100% 27%;
     --status-pending-foreground: 0 0% 100%;
 
     --surface-elevated: 240 5% 14%;

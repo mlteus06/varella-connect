@@ -28,7 +28,7 @@ export function AppHeader() {
         <div className="flex items-center gap-6">
           <h1 className="text-lg font-bold tracking-tight">
             <span className="text-primary">Disparador</span>{" "}
-            <span className="text-foreground">Varella</span>
+            <span className="text-foreground">Inout</span>
           </h1>
           <nav className="flex items-center gap-0.5">
             {navItems.map(({ path, label, icon: Icon }) => (

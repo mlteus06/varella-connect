@@ -104,37 +104,32 @@ export default function Campaigns() {
         }
       }
 
-      // Check pending campaigns: if all their contacts in disparos are ENVIADO, mark as disparada
+      // Check pending campaigns: if all their disparos are ENVIADO, mark as disparada
       const enrichedCampaigns = await Promise.all(
         campsData.map(async (c: any) => {
           let finalStatus = c.status;
 
           if (c.status === "pendente") {
-            // Get campaign contacts
-            const { data: campContacts } = await client
-              .from("campaign_contacts")
-              .select("telefone")
+            // Check disparos linked to this campaign that are NOT yet ENVIADO
+            const { data: pendingDisparos } = await client
+              .from("disparos")
+              .select("id")
+              .eq("campaign_id", c.id)
+              .neq("status", "ENVIADO")
+              .limit(1);
+
+            // Also check if there ARE any disparos for this campaign
+            const { count: totalDisparos } = await client
+              .from("disparos")
+              .select("*", { count: "exact", head: true })
               .eq("campaign_id", c.id);
 
-            if (campContacts && campContacts.length > 0) {
-              const phones = campContacts.map((cc: any) => cc.telefone);
-              
-              // Check disparos for these phones that are NOT yet ENVIADO
-              const { data: pendingDisparos } = await client
-                .from("disparos")
-                .select("id")
-                .in("telefone", phones)
-                .neq("status", "ENVIADO")
-                .limit(1);
-
-              if (!pendingDisparos || pendingDisparos.length === 0) {
-                // All sent! Update campaign status in DB
-                finalStatus = "disparada";
-                await client
-                  .from("campaigns")
-                  .update({ status: "disparada" })
-                  .eq("id", c.id);
-              }
+            if (totalDisparos && totalDisparos > 0 && (!pendingDisparos || pendingDisparos.length === 0)) {
+              finalStatus = "disparada";
+              await client
+                .from("campaigns")
+                .update({ status: "disparada" })
+                .eq("id", c.id);
             }
           }
 
@@ -313,6 +308,7 @@ export default function Campaigns() {
       const template = templates.find((t) => t.id === selectedTemplateId);
       if (template) {
         const disparos = contactsArray.map((c) => ({
+          campaign_id: campaign.id,
           nome: c.nome,
           telefone: c.telefone,
           mensagem: template.content,

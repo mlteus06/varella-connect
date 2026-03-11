@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
           const batchSize = 500;
           for (let i = 0; i < contacts.length; i += batchSize) {
             const batch = contacts.slice(i, i + batchSize).map((c: any) => ({
+              campaign_id: campaign.id,
               nome: c.nome,
               telefone: c.telefone,
               mensagem: messageContent,

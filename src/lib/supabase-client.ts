@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "varella_supabase_config";
+const STORAGE_KEY = "inout_supabase_config";
 
 export interface SupabaseConfig {
   url: string;
