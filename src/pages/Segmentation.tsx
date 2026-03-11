@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus, Pencil, Upload, Flame } from "lucide-react";
+import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus, Pencil, Upload } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -54,7 +54,7 @@ export default function Segmentation() {
   const [editManualTelefone, setEditManualTelefone] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const editFileInputRef = useRef<HTMLInputElement>(null);
-  const [creatingHot, setCreatingHot] = useState(false);
+  
 
   useEffect(() => {
     const init = async () => {
@@ -72,9 +72,90 @@ export default function Segmentation() {
     if (client) fetchData();
   }, [client]);
 
+  const syncHotLeads = async () => {
+    if (!client) return;
+
+    // Fetch all contacts that responded
+    const { data: hotDisparos } = await client
+      .from("disparos")
+      .select("nome, telefone")
+      .eq("respondeu", true);
+
+    // Find or create the auto hot leads contact list
+    const HOT_LIST_NAME = "🔥 Leads Quentes (Auto)";
+    let { data: hotList } = await client
+      .from("contact_lists")
+      .select("id")
+      .eq("name", HOT_LIST_NAME)
+      .maybeSingle();
+
+    if (!hotList) {
+      const { data: newList } = await client
+        .from("contact_lists")
+        .insert({ name: HOT_LIST_NAME, type: "hot_leads" })
+        .select("id")
+        .single();
+      hotList = newList;
+    }
+
+    if (!hotList) return;
+
+    // Clear old contacts and re-insert current hot leads
+    await client.from("base_contacts").delete().eq("list_id", hotList.id);
+
+    if (hotDisparos && hotDisparos.length > 0) {
+      const batchSize = 500;
+      for (let i = 0; i < hotDisparos.length; i += batchSize) {
+        const batch = hotDisparos.slice(i, i + batchSize).map((c: any) => ({
+          list_id: hotList!.id,
+          nome: c.nome || null,
+          telefone: c.telefone,
+        }));
+        await client.from("base_contacts").insert(batch);
+      }
+    }
+
+    // Find or create the auto segmentation
+    const HOT_SEG_NAME = "🔥 Leads Quentes (Auto)";
+    let { data: hotSeg } = await client
+      .from("segmentation_lists")
+      .select("id")
+      .eq("name", HOT_SEG_NAME)
+      .maybeSingle();
+
+    if (!hotSeg) {
+      const { data: newSeg } = await client
+        .from("segmentation_lists")
+        .insert({ name: HOT_SEG_NAME })
+        .select("id")
+        .single();
+      hotSeg = newSeg;
+    }
+
+    if (!hotSeg) return;
+
+    // Ensure the link exists
+    const { data: existingLink } = await client
+      .from("segmentation_sources")
+      .select("id")
+      .eq("segmentation_id", hotSeg.id)
+      .eq("contact_list_id", hotList.id)
+      .maybeSingle();
+
+    if (!existingLink) {
+      await client.from("segmentation_sources").insert({
+        segmentation_id: hotSeg.id,
+        contact_list_id: hotList.id,
+      });
+    }
+  };
+
   const fetchData = async () => {
     if (!client) return;
     setLoading(true);
+
+    // Auto-sync hot leads first
+    await syncHotLeads();
 
     const { data: listsData } = await client
       .from("contact_lists")
@@ -236,66 +317,6 @@ export default function Segmentation() {
     setEditSaving(false);
   };
 
-  const handleCreateHotLeads = async () => {
-    if (!client) return;
-    setCreatingHot(true);
-    try {
-      // Get all contacts that responded
-      const { data: hotDisparos, error: dispError } = await client
-        .from("disparos")
-        .select("nome, telefone")
-        .eq("respondeu", true);
-
-      if (dispError || !hotDisparos || hotDisparos.length === 0) {
-        toast.error("Nenhum lead quente encontrado (ninguém respondeu ainda).");
-        setCreatingHot(false);
-        return;
-      }
-
-      // Create a contact list for these hot leads
-      const listName = `Leads Quentes - ${new Date().toLocaleDateString("pt-BR")}`;
-      const { data: list } = await client
-        .from("contact_lists")
-        .insert({ name: listName, type: "spreadsheet" })
-        .select("id")
-        .single();
-
-      if (!list) { toast.error("Erro ao criar lista."); setCreatingHot(false); return; }
-
-      // Insert contacts in batches
-      const batchSize = 500;
-      for (let i = 0; i < hotDisparos.length; i += batchSize) {
-        const batch = hotDisparos.slice(i, i + batchSize).map((c: any) => ({
-          list_id: list.id,
-          nome: c.nome || null,
-          telefone: c.telefone,
-        }));
-        await client.from("base_contacts").insert(batch);
-      }
-
-      // Create segmentation list
-      const { data: seg } = await client
-        .from("segmentation_lists")
-        .insert({ name: listName })
-        .select("id")
-        .single();
-
-      if (!seg) { toast.error("Erro ao criar segmentação."); setCreatingHot(false); return; }
-
-      // Link the contact list to the segmentation
-      await client.from("segmentation_sources").insert({
-        segmentation_id: seg.id,
-        contact_list_id: list.id,
-      });
-
-      toast.success(`Segmentação "${listName}" criada com ${hotDisparos.length} leads quentes!`);
-      fetchData();
-    } catch {
-      toast.error("Erro ao criar lista de leads quentes.");
-    }
-    setCreatingHot(false);
-  };
-
   const handleEditAddManual = async () => {
     if (!client || !editSegment) return;
     if (!editManualTelefone.trim()) { toast.error("Informe o telefone."); return; }
@@ -332,16 +353,6 @@ export default function Segmentation() {
             <h2 className="text-2xl font-bold text-foreground">Segmentação</h2>
             <p className="text-sm text-muted-foreground">Crie listas de segmentação combinando planilhas e contatos da sua base.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={handleCreateHotLeads}
-              disabled={creatingHot}
-            >
-              {creatingHot ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
-              Criar Lista Com Leads Quentes
-            </Button>
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
@@ -401,7 +412,6 @@ export default function Segmentation() {
               </div>
             </DialogContent>
             </Dialog>
-          </div>
         </div>
 
         <Card className="bg-card border-border">
