@@ -363,6 +363,32 @@ export default function Contacts() {
                   <Button onClick={handleUploadSave} disabled={saving} className="w-full">
                     {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</> : "Salvar Planilha"}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full text-muted-foreground text-xs"
+                    onClick={() => {
+                      const modelData = [
+                        ["NOME", "NÚMERO"],
+                        ["Maria Silva", "5511999990001"],
+                        ["João Santos", "5521988880002"],
+                        ["Ana Oliveira", "5531977770003"],
+                        ["Carlos Souza", "5541966660004"],
+                        ["Fernanda Lima", "5551955550005"],
+                        ["Pedro Costa", "5561944440006"],
+                        ["Juliana Almeida", "5571933330007"],
+                        ["Rafael Pereira", "5581922220008"],
+                        ["Beatriz Rocha", "5591911110009"],
+                        ["Lucas Ferreira", "5511900000010"],
+                      ];
+                      const ws = XLSX.utils.aoa_to_sheet(modelData);
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+                      XLSX.writeFile(wb, "modelo_contatos.xlsx");
+                    }}
+                  >
+                    Baixar Modelo
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
