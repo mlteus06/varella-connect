@@ -367,6 +367,15 @@ export default function Segmentation() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleEditOpen(s)}
+                          className="h-8 gap-1.5 text-xs"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => { setViewSegment(s); setViewOpen(true); }}
                           className="h-8 gap-1.5 text-xs"
                         >
