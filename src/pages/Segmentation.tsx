@@ -72,9 +72,90 @@ export default function Segmentation() {
     if (client) fetchData();
   }, [client]);
 
+  const syncHotLeads = async () => {
+    if (!client) return;
+
+    // Fetch all contacts that responded
+    const { data: hotDisparos } = await client
+      .from("disparos")
+      .select("nome, telefone")
+      .eq("respondeu", true);
+
+    // Find or create the auto hot leads contact list
+    const HOT_LIST_NAME = "🔥 Leads Quentes (Auto)";
+    let { data: hotList } = await client
+      .from("contact_lists")
+      .select("id")
+      .eq("name", HOT_LIST_NAME)
+      .maybeSingle();
+
+    if (!hotList) {
+      const { data: newList } = await client
+        .from("contact_lists")
+        .insert({ name: HOT_LIST_NAME, type: "hot_leads" })
+        .select("id")
+        .single();
+      hotList = newList;
+    }
+
+    if (!hotList) return;
+
+    // Clear old contacts and re-insert current hot leads
+    await client.from("base_contacts").delete().eq("list_id", hotList.id);
+
+    if (hotDisparos && hotDisparos.length > 0) {
+      const batchSize = 500;
+      for (let i = 0; i < hotDisparos.length; i += batchSize) {
+        const batch = hotDisparos.slice(i, i + batchSize).map((c: any) => ({
+          list_id: hotList!.id,
+          nome: c.nome || null,
+          telefone: c.telefone,
+        }));
+        await client.from("base_contacts").insert(batch);
+      }
+    }
+
+    // Find or create the auto segmentation
+    const HOT_SEG_NAME = "🔥 Leads Quentes (Auto)";
+    let { data: hotSeg } = await client
+      .from("segmentation_lists")
+      .select("id")
+      .eq("name", HOT_SEG_NAME)
+      .maybeSingle();
+
+    if (!hotSeg) {
+      const { data: newSeg } = await client
+        .from("segmentation_lists")
+        .insert({ name: HOT_SEG_NAME })
+        .select("id")
+        .single();
+      hotSeg = newSeg;
+    }
+
+    if (!hotSeg) return;
+
+    // Ensure the link exists
+    const { data: existingLink } = await client
+      .from("segmentation_sources")
+      .select("id")
+      .eq("segmentation_id", hotSeg.id)
+      .eq("contact_list_id", hotList.id)
+      .maybeSingle();
+
+    if (!existingLink) {
+      await client.from("segmentation_sources").insert({
+        segmentation_id: hotSeg.id,
+        contact_list_id: hotList.id,
+      });
+    }
+  };
+
   const fetchData = async () => {
     if (!client) return;
     setLoading(true);
+
+    // Auto-sync hot leads first
+    await syncHotLeads();
 
     const { data: listsData } = await client
       .from("contact_lists")
