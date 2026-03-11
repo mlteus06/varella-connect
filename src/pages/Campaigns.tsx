@@ -413,7 +413,7 @@ export default function Campaigns() {
                 </div>
 
                 <Button onClick={handleCreateCampaign} disabled={saving} className="w-full">
-                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando...</> : "Criar Campanha"}
+                  {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Disparando...</> : "Disparar Campanha"}
                 </Button>
               </div>
             </DialogContent>

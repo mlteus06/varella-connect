@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus, Pencil, Upload } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface ContactList {
@@ -41,6 +43,17 @@ export default function Segmentation() {
 
   const [viewOpen, setViewOpen] = useState(false);
   const [viewSegment, setViewSegment] = useState<SegmentationList | null>(null);
+
+  // Edit dialog
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSegment, setEditSegment] = useState<SegmentationList | null>(null);
+  const [editUploadContacts, setEditUploadContacts] = useState<{ nome: string | null; telefone: string }[]>([]);
+  const [editFileName, setEditFileName] = useState("");
+  const [editListName, setEditListName] = useState("");
+  const [editManualNome, setEditManualNome] = useState("");
+  const [editManualTelefone, setEditManualTelefone] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -164,6 +177,91 @@ export default function Segmentation() {
     }
   };
 
+  const handleEditOpen = (s: SegmentationList) => {
+    setEditSegment(s);
+    setEditUploadContacts([]);
+    setEditFileName("");
+    setEditListName("");
+    setEditManualNome("");
+    setEditManualTelefone("");
+    setEditOpen(true);
+  };
+
+  const handleEditFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const startIdx = rows.length > 0 && typeof rows[0][0] === "string" &&
+          (rows[0][0].toLowerCase().includes("nome") || rows[0][0].toLowerCase().includes("name")) ? 1 : 0;
+        const parsed: { nome: string | null; telefone: string }[] = [];
+        for (let i = startIdx; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[1]) continue;
+          parsed.push({ nome: row[0] ? String(row[0]).trim() : null, telefone: String(row[1]).trim() });
+        }
+        if (parsed.length === 0) { toast.error("Nenhum contato encontrado."); }
+        else { setEditUploadContacts(parsed); setEditFileName(file.name); if (!editListName) setEditListName(file.name.replace(/\.(xlsx|xls|csv)$/i, "")); toast.success(`${parsed.length} contatos encontrados.`); }
+      } catch { toast.error("Erro ao ler a planilha."); }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";
+  };
+
+  const handleEditAddSpreadsheet = async () => {
+    if (!client || !editSegment) return;
+    if (!editListName.trim()) { toast.error("Dê um nome para a planilha."); return; }
+    if (editUploadContacts.length === 0) { toast.error("Selecione uma planilha."); return; }
+    setEditSaving(true);
+
+    const { data: list } = await client.from("contact_lists").insert({ name: editListName.trim(), type: "spreadsheet" }).select("id").single();
+    if (!list) { toast.error("Erro ao salvar."); setEditSaving(false); return; }
+
+    const batchSize = 500;
+    for (let i = 0; i < editUploadContacts.length; i += batchSize) {
+      const batch = editUploadContacts.slice(i, i + batchSize).map((c) => ({ list_id: list.id, nome: c.nome, telefone: c.telefone }));
+      await client.from("base_contacts").insert(batch);
+    }
+
+    await client.from("segmentation_sources").insert({ segmentation_id: editSegment.id, contact_list_id: list.id });
+    toast.success(`Planilha "${editListName}" adicionada à segmentação!`);
+    setEditUploadContacts([]); setEditFileName(""); setEditListName("");
+    fetchData();
+    setEditSaving(false);
+  };
+
+  const handleEditAddManual = async () => {
+    if (!client || !editSegment) return;
+    if (!editManualTelefone.trim()) { toast.error("Informe o telefone."); return; }
+    setEditSaving(true);
+
+    // Find or create "Contatos Avulsos" list linked to this segmentation
+    let { data: manualList } = await client.from("contact_lists").select("id").eq("type", "manual").maybeSingle();
+    if (!manualList) {
+      const { data: newList } = await client.from("contact_lists").insert({ name: "Contatos Avulsos", type: "manual" }).select("id").single();
+      manualList = newList;
+    }
+    if (!manualList) { toast.error("Erro ao criar lista."); setEditSaving(false); return; }
+
+    await client.from("base_contacts").insert({ list_id: manualList.id, nome: editManualNome.trim() || null, telefone: editManualTelefone.trim() });
+
+    // Ensure this list is linked to the segmentation
+    const { data: existing } = await client.from("segmentation_sources").select("id").eq("segmentation_id", editSegment.id).eq("contact_list_id", manualList.id).maybeSingle();
+    if (!existing) {
+      await client.from("segmentation_sources").insert({ segmentation_id: editSegment.id, contact_list_id: manualList.id });
+    }
+
+    toast.success("Contato adicionado à segmentação!");
+    setEditManualNome(""); setEditManualTelefone("");
+    fetchData();
+    setEditSaving(false);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -269,6 +367,15 @@ export default function Segmentation() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleEditOpen(s)}
+                          className="h-8 gap-1.5 text-xs"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => { setViewSegment(s); setViewOpen(true); }}
                           className="h-8 gap-1.5 text-xs"
                         >
@@ -317,6 +424,110 @@ export default function Segmentation() {
                     <span className="text-sm">{src.name}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit segmentation dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="bg-card border-border sm:max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Segmentação — {editSegment?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-5 pt-2">
+              {/* Current sources */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Listas atuais:</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {editSegment?.sources.map((src) => (
+                    <span key={src.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs text-primary">
+                      {src.type === "manual" ? <UserPlus className="h-3 w-3" /> : <FileSpreadsheet className="h-3 w-3" />}
+                      {src.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Import spreadsheet */}
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Importar Planilha
+                </Label>
+                <Input
+                  placeholder="Nome da planilha"
+                  value={editListName}
+                  onChange={(e) => setEditListName(e.target.value)}
+                  className="bg-secondary border-border"
+                  maxLength={100}
+                />
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleEditFileUpload}
+                  className="hidden"
+                />
+                <Button type="button" variant="outline" className="w-full gap-2" onClick={() => editFileInputRef.current?.click()}>
+                  <Upload className="h-4 w-4" />
+                  Selecionar arquivo
+                </Button>
+                {editFileName && <p className="text-xs text-muted-foreground">📄 {editFileName}</p>}
+                {editUploadContacts.length > 0 && (
+                  <>
+                    <p className="text-sm text-primary font-medium">✓ {editUploadContacts.length} contatos encontrados</p>
+                    <div className="rounded-lg border border-border overflow-hidden max-h-32 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border">
+                            <TableHead className="text-muted-foreground text-xs">Nome</TableHead>
+                            <TableHead className="text-muted-foreground text-xs">Telefone</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {editUploadContacts.slice(0, 5).map((c, i) => (
+                            <TableRow key={i} className="border-border">
+                              <TableCell className="text-sm py-1.5">{c.nome || "—"}</TableCell>
+                              <TableCell className="text-sm font-mono py-1.5">{c.telefone}</TableCell>
+                            </TableRow>
+                          ))}
+                          {editUploadContacts.length > 5 && (
+                            <TableRow><TableCell colSpan={2} className="text-xs text-muted-foreground text-center py-2">... e mais {editUploadContacts.length - 5}</TableCell></TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+                <Button onClick={handleEditAddSpreadsheet} disabled={editSaving || editUploadContacts.length === 0} className="w-full">
+                  {editSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</> : "Adicionar Planilha"}
+                </Button>
+              </div>
+
+              {/* Add manual contact */}
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Adicionar Contato Avulso
+                </Label>
+                <Input
+                  placeholder="Nome (opcional)"
+                  value={editManualNome}
+                  onChange={(e) => setEditManualNome(e.target.value)}
+                  className="bg-secondary border-border"
+                  maxLength={100}
+                />
+                <Input
+                  placeholder="+55 11 99999-9999"
+                  value={editManualTelefone}
+                  onChange={(e) => setEditManualTelefone(e.target.value)}
+                  className="bg-secondary border-border"
+                  maxLength={20}
+                />
+                <Button onClick={handleEditAddManual} disabled={editSaving} className="w-full">
+                  {editSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</> : "Adicionar Contato"}
+                </Button>
               </div>
             </div>
           </DialogContent>
