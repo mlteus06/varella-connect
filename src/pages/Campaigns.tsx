@@ -187,13 +187,25 @@ export default function Campaigns() {
 
     setSaving(true);
 
+    // Build scheduled_at if scheduling
+    let scheduledAt: string | null = null;
+    if (isScheduled) {
+      if (!scheduledDate) { toast.error("Selecione a data do agendamento."); setSaving(false); return; }
+      const [hours, minutes] = scheduledTime.split(":").map(Number);
+      const dt = new Date(scheduledDate);
+      dt.setHours(hours, minutes, 0, 0);
+      if (dt <= new Date()) { toast.error("A data/hora deve ser no futuro."); setSaving(false); return; }
+      scheduledAt = dt.toISOString();
+    }
+
     // Create campaign
     const { data: campaign, error } = await client
       .from("campaigns")
       .insert({
         name: campaignName.trim(),
-        status: "pendente",
+        status: isScheduled ? "agendado" : "pendente",
         template_id: selectedTemplateId,
+        scheduled_at: scheduledAt,
       })
       .select("id")
       .single();
