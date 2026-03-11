@@ -210,6 +210,8 @@ export default function Campaigns() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "disparada":
+        return <Badge className="bg-green-500/10 text-green-500 border-none text-xs flex items-center gap-1"><CheckCircle className="h-3 w-3" />Campanha Disparada</Badge>;
       case "enviado":
         return <Badge className="bg-green-500/10 text-green-500 border-none text-xs">Enviado</Badge>;
       case "enviando":
