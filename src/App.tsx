@@ -7,7 +7,10 @@ import { AuthGuard } from "@/components/AuthGuard";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
-import NovoDisparo from "./pages/NovoDisparo";
+import Contacts from "./pages/Contacts";
+import Segmentation from "./pages/Segmentation";
+import Templates from "./pages/Templates";
+import Campaigns from "./pages/Campaigns";
 import CampaignDashboard from "./pages/CampaignDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -21,38 +24,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route
-            path="/onboarding"
-            element={
-              <AuthGuard>
-                <Onboarding />
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <AuthGuard>
-                <Dashboard />
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/novo"
-            element={
-              <AuthGuard>
-                <NovoDisparo />
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/campanha/:id"
-            element={
-              <AuthGuard>
-                <CampaignDashboard />
-              </AuthGuard>
-            }
-          />
+          <Route path="/onboarding" element={<AuthGuard><Onboarding /></AuthGuard>} />
+          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+          <Route path="/contatos" element={<AuthGuard><Contacts /></AuthGuard>} />
+          <Route path="/segmentacao" element={<AuthGuard><Segmentation /></AuthGuard>} />
+          <Route path="/templates" element={<AuthGuard><Templates /></AuthGuard>} />
+          <Route path="/campanhas" element={<AuthGuard><Campaigns /></AuthGuard>} />
+          <Route path="/campanha/:id" element={<AuthGuard><CampaignDashboard /></AuthGuard>} />
           <Route path="/" element={<Navigate to="/auth" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

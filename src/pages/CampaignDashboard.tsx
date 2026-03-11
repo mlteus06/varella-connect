@@ -26,10 +26,6 @@ interface Disparo {
   respondeu?: boolean | null;
 }
 
-interface Contact {
-  telefone: string;
-}
-
 type FilterKey = "all" | "today" | "yesterday" | "7d" | "15d" | "30d" | "custom";
 
 const FILTER_LABELS: Record<FilterKey, string> = {
@@ -56,9 +52,8 @@ export default function CampaignDashboard() {
       let config = getSupabaseConfig();
       if (!config) config = await loadConfigFromCloud();
       if (!config) { navigate("/onboarding"); return; }
-      if (!id) { navigate("/novo"); return; }
+      if (!id) { navigate("/campanhas"); return; }
 
-      // Fetch campaign name
       const { data: campaign } = await supabase
         .from("campaigns")
         .select("name")
@@ -66,20 +61,15 @@ export default function CampaignDashboard() {
         .single();
       if (campaign) setCampaignName(campaign.name);
 
-      // Fetch campaign contacts' phone numbers
       const { data: contacts } = await supabase
         .from("campaign_contacts")
         .select("telefone")
         .eq("campaign_id", id);
 
-      if (!contacts || contacts.length === 0) {
-        setLoading(false);
-        return;
-      }
+      if (!contacts || contacts.length === 0) { setLoading(false); return; }
 
-      const phones = contacts.map((c: Contact) => c.telefone);
+      const phones = contacts.map((c: any) => c.telefone);
 
-      // Fetch disparos matching those phones from external Supabase
       const client = createExternalClient();
       if (!client) { setLoading(false); return; }
 
@@ -99,28 +89,15 @@ export default function CampaignDashboard() {
     if (filter === "all") return null;
     const now = new Date();
     switch (filter) {
-      case "today":
-        return { start: startOfDay(now), end: endOfDay(now) };
-      case "yesterday": {
-        const y = subDays(now, 1);
-        return { start: startOfDay(y), end: endOfDay(y) };
-      }
-      case "7d":
-        return { start: startOfDay(subDays(now, 6)), end: endOfDay(now) };
-      case "15d":
-        return { start: startOfDay(subDays(now, 14)), end: endOfDay(now) };
-      case "30d":
-        return { start: startOfDay(subDays(now, 29)), end: endOfDay(now) };
+      case "today": return { start: startOfDay(now), end: endOfDay(now) };
+      case "yesterday": { const y = subDays(now, 1); return { start: startOfDay(y), end: endOfDay(y) }; }
+      case "7d": return { start: startOfDay(subDays(now, 6)), end: endOfDay(now) };
+      case "15d": return { start: startOfDay(subDays(now, 14)), end: endOfDay(now) };
+      case "30d": return { start: startOfDay(subDays(now, 29)), end: endOfDay(now) };
       case "custom":
-        if (customRange?.from) {
-          return {
-            start: startOfDay(customRange.from),
-            end: endOfDay(customRange.to || customRange.from),
-          };
-        }
+        if (customRange?.from) return { start: startOfDay(customRange.from), end: endOfDay(customRange.to || customRange.from) };
         return null;
-      default:
-        return null;
+      default: return null;
     }
   };
 
@@ -145,7 +122,7 @@ export default function CampaignDashboard() {
       <main className="container py-8 animate-fade-in">
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/novo")}>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/campanhas")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
@@ -155,28 +132,18 @@ export default function CampaignDashboard() {
           </div>
         </div>
 
-        {/* Date Filters */}
         <div className="mb-6 flex flex-wrap items-center gap-2">
           {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
             if (key === "custom") return null;
             return (
-              <Button
-                key={key}
-                variant={activeFilter === key ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveFilter(key)}
-              >
+              <Button key={key} variant={activeFilter === key ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(key)}>
                 {FILTER_LABELS[key]}
               </Button>
             );
           })}
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                variant={activeFilter === "custom" ? "default" : "outline"}
-                size="sm"
-                className="gap-2"
-              >
+              <Button variant={activeFilter === "custom" ? "default" : "outline"} size="sm" className="gap-2">
                 <CalendarIcon className="h-4 w-4" />
                 {activeFilter === "custom" && customRange?.from
                   ? `${format(customRange.from, "dd/MM", { locale: ptBR })} - ${format(customRange.to || customRange.from, "dd/MM", { locale: ptBR })}`
@@ -187,10 +154,7 @@ export default function CampaignDashboard() {
               <Calendar
                 mode="range"
                 selected={customRange}
-                onSelect={(range) => {
-                  setCustomRange(range);
-                  setActiveFilter("custom");
-                }}
+                onSelect={(range) => { setCustomRange(range); setActiveFilter("custom"); }}
                 numberOfMonths={1}
                 locale={ptBR}
                 className={cn("p-3 pointer-events-auto")}
@@ -238,15 +202,11 @@ export default function CampaignDashboard() {
                       <TableCell className="font-medium">{d.nome || "—"}</TableCell>
                       <TableCell className="font-mono text-sm">{d.telefone}</TableCell>
                       <TableCell className="text-sm max-w-[200px] truncate">{d.mensagem || "—"}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={d.status} />
-                      </TableCell>
+                      <TableCell><StatusBadge status={d.status} /></TableCell>
                       <TableCell>
                         <span className={cn(
                           "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                          d.respondeu
-                            ? "bg-green-500/10 text-green-500"
-                            : "bg-muted text-muted-foreground"
+                          d.respondeu ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"
                         )}>
                           {d.respondeu ? "Sim" : "Não"}
                         </span>
