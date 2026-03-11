@@ -264,27 +264,35 @@ export default function Campaigns() {
       await client.from("campaign_contacts").insert(batch);
     }
 
-    // Create disparos
-    const template = templates.find((t) => t.id === selectedTemplateId);
-    if (template) {
-      const disparos = contactsArray.map((c) => ({
-        nome: c.nome,
-        telefone: c.telefone,
-        mensagem: template.content,
-        status: "PENDENTE",
-      }));
+    // Create disparos only if NOT scheduled
+    if (!isScheduled) {
+      const template = templates.find((t) => t.id === selectedTemplateId);
+      if (template) {
+        const disparos = contactsArray.map((c) => ({
+          nome: c.nome,
+          telefone: c.telefone,
+          mensagem: template.content,
+          status: "PENDENTE",
+        }));
 
-      for (let i = 0; i < disparos.length; i += batchSize) {
-        const batch = disparos.slice(i, i + batchSize);
-        await client.from("disparos").insert(batch);
+        for (let i = 0; i < disparos.length; i += batchSize) {
+          const batch = disparos.slice(i, i + batchSize);
+          await client.from("disparos").insert(batch);
+        }
       }
     }
 
-    toast.success(`Campanha "${campaignName}" criada com ${contactsArray.length} contatos!`);
+    const successMsg = isScheduled
+      ? `Campanha "${campaignName}" agendada para ${format(scheduledDate!, "dd/MM/yyyy")} às ${scheduledTime}!`
+      : `Campanha "${campaignName}" criada com ${contactsArray.length} contatos!`;
+    toast.success(successMsg);
     setCampaignName("");
     setSelectedListIds([]);
     setSelectedSegIds([]);
     setSelectedTemplateId("");
+    setIsScheduled(false);
+    setScheduledDate(undefined);
+    setScheduledTime("09:00");
     setCreateOpen(false);
     fetchData();
     setSaving(false);
