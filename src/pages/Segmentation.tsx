@@ -428,6 +428,110 @@ export default function Segmentation() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit segmentation dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="bg-card border-border sm:max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Segmentação — {editSegment?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-5 pt-2">
+              {/* Current sources */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Listas atuais:</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {editSegment?.sources.map((src) => (
+                    <span key={src.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs text-primary">
+                      {src.type === "manual" ? <UserPlus className="h-3 w-3" /> : <FileSpreadsheet className="h-3 w-3" />}
+                      {src.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Import spreadsheet */}
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Importar Planilha
+                </Label>
+                <Input
+                  placeholder="Nome da planilha"
+                  value={editListName}
+                  onChange={(e) => setEditListName(e.target.value)}
+                  className="bg-secondary border-border"
+                  maxLength={100}
+                />
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleEditFileUpload}
+                  className="hidden"
+                />
+                <Button type="button" variant="outline" className="w-full gap-2" onClick={() => editFileInputRef.current?.click()}>
+                  <Upload className="h-4 w-4" />
+                  Selecionar arquivo
+                </Button>
+                {editFileName && <p className="text-xs text-muted-foreground">📄 {editFileName}</p>}
+                {editUploadContacts.length > 0 && (
+                  <>
+                    <p className="text-sm text-primary font-medium">✓ {editUploadContacts.length} contatos encontrados</p>
+                    <div className="rounded-lg border border-border overflow-hidden max-h-32 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border">
+                            <TableHead className="text-muted-foreground text-xs">Nome</TableHead>
+                            <TableHead className="text-muted-foreground text-xs">Telefone</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {editUploadContacts.slice(0, 5).map((c, i) => (
+                            <TableRow key={i} className="border-border">
+                              <TableCell className="text-sm py-1.5">{c.nome || "—"}</TableCell>
+                              <TableCell className="text-sm font-mono py-1.5">{c.telefone}</TableCell>
+                            </TableRow>
+                          ))}
+                          {editUploadContacts.length > 5 && (
+                            <TableRow><TableCell colSpan={2} className="text-xs text-muted-foreground text-center py-2">... e mais {editUploadContacts.length - 5}</TableCell></TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+                <Button onClick={handleEditAddSpreadsheet} disabled={editSaving || editUploadContacts.length === 0} className="w-full">
+                  {editSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</> : "Adicionar Planilha"}
+                </Button>
+              </div>
+
+              {/* Add manual contact */}
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Adicionar Contato Avulso
+                </Label>
+                <Input
+                  placeholder="Nome (opcional)"
+                  value={editManualNome}
+                  onChange={(e) => setEditManualNome(e.target.value)}
+                  className="bg-secondary border-border"
+                  maxLength={100}
+                />
+                <Input
+                  placeholder="+55 11 99999-9999"
+                  value={editManualTelefone}
+                  onChange={(e) => setEditManualTelefone(e.target.value)}
+                  className="bg-secondary border-border"
+                  maxLength={20}
+                />
+                <Button onClick={handleEditAddManual} disabled={editSaving} className="w-full">
+                  {editSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</> : "Adicionar Contato"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
