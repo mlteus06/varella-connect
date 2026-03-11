@@ -103,10 +103,50 @@ export default function Campaigns() {
           tpls.forEach((t: any) => { templateMap[t.id] = t.title; });
         }
       }
-      setCampaigns(campsData.map((c: any) => ({
-        ...c,
-        template_title: c.template_id ? templateMap[c.template_id] || "—" : "—"
-      })));
+
+      // Check pending campaigns: if all their contacts in disparos are ENVIADO, mark as disparada
+      const enrichedCampaigns = await Promise.all(
+        campsData.map(async (c: any) => {
+          let finalStatus = c.status;
+
+          if (c.status === "pendente") {
+            // Get campaign contacts
+            const { data: campContacts } = await client
+              .from("campaign_contacts")
+              .select("telefone")
+              .eq("campaign_id", c.id);
+
+            if (campContacts && campContacts.length > 0) {
+              const phones = campContacts.map((cc: any) => cc.telefone);
+              
+              // Check disparos for these phones that are NOT yet ENVIADO
+              const { data: pendingDisparos } = await client
+                .from("disparos")
+                .select("id")
+                .in("telefone", phones)
+                .neq("status", "ENVIADO")
+                .limit(1);
+
+              if (!pendingDisparos || pendingDisparos.length === 0) {
+                // All sent! Update campaign status in DB
+                finalStatus = "disparada";
+                await client
+                  .from("campaigns")
+                  .update({ status: "disparada" })
+                  .eq("id", c.id);
+              }
+            }
+          }
+
+          return {
+            ...c,
+            status: finalStatus,
+            template_title: c.template_id ? templateMap[c.template_id] || "—" : "—"
+          };
+        })
+      );
+
+      setCampaigns(enrichedCampaigns);
     }
 
     // Contact lists
