@@ -54,6 +54,7 @@ export default function Segmentation() {
   const [editManualTelefone, setEditManualTelefone] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const editFileInputRef = useRef<HTMLInputElement>(null);
+  const [creatingHot, setCreatingHot] = useState(false);
 
   useEffect(() => {
     const init = async () => {
