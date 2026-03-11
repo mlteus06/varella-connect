@@ -174,6 +174,8 @@ export default function Campaigns() {
         return <Badge className="bg-green-500/10 text-green-500 border-none text-xs">Enviado</Badge>;
       case "enviando":
         return <Badge className="bg-blue-500/10 text-blue-500 border-none text-xs">Enviando</Badge>;
+      case "agendado":
+        return <Badge className="bg-amber-500/10 text-amber-500 border-none text-xs flex items-center gap-1"><Clock className="h-3 w-3" />Agendado</Badge>;
       default:
         return <Badge className="bg-status-pending text-status-pending-foreground border-none text-xs">Pendente</Badge>;
     }
