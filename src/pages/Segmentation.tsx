@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, Plus, Trash2, Layers, Eye, FileSpreadsheet, UserPlus, Pencil, Upload } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { toast } from "sonner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface ContactList {
