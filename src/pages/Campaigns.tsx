@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus, Trash2, Megaphone, FileSpreadsheet, Layers, Send, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Loader2, Plus, Trash2, Megaphone, FileSpreadsheet, Layers, Send, Clock, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 interface ContactList {
@@ -323,20 +324,30 @@ export default function Campaigns() {
                   {contactLists.length === 0 ? (
                     <p className="text-xs text-muted-foreground">Nenhuma planilha na base. Suba uma planilha primeiro.</p>
                   ) : (
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto rounded-lg border border-border p-2">
-                      {contactLists.map((l) => (
-                        <div
-                          key={l.id}
-                          className="flex items-center gap-3 rounded-md p-2 hover:bg-secondary/50 cursor-pointer"
-                          onClick={() => toggleList(l.id)}
-                        >
-                          <Checkbox checked={selectedListIds.includes(l.id)} onCheckedChange={() => toggleList(l.id)} />
-                          <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />
-                          <span className="text-sm truncate flex-1">{l.name}</span>
-                          <span className="text-xs text-muted-foreground">{l.contact_count}</span>
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex w-full items-center justify-between rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-foreground hover:bg-secondary/80 transition-colors">
+                          <span>{selectedListIds.length > 0 ? `${selectedListIds.length} planilha(s) selecionada(s)` : "Selecione as planilhas..."}</span>
+                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-1 space-y-0.5 rounded-lg border border-border bg-secondary/30 p-1.5 max-h-48 overflow-y-auto">
+                          {contactLists.map((l) => (
+                            <div
+                              key={l.id}
+                              className="flex items-center gap-3 rounded-md px-2.5 py-2 hover:bg-secondary/80 cursor-pointer transition-colors"
+                              onClick={() => toggleList(l.id)}
+                            >
+                              <Checkbox checked={selectedListIds.includes(l.id)} onCheckedChange={() => toggleList(l.id)} />
+                              <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />
+                              <span className="text-sm truncate flex-1">{l.name}</span>
+                              <span className="text-xs text-muted-foreground">{l.contact_count}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                 </div>
 
@@ -346,20 +357,30 @@ export default function Campaigns() {
                   {segmentations.length === 0 ? (
                     <p className="text-xs text-muted-foreground">Nenhuma segmentação criada.</p>
                   ) : (
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto rounded-lg border border-border p-2">
-                      {segmentations.map((s) => (
-                        <div
-                          key={s.id}
-                          className="flex items-center gap-3 rounded-md p-2 hover:bg-secondary/50 cursor-pointer"
-                          onClick={() => toggleSeg(s.id)}
-                        >
-                          <Checkbox checked={selectedSegIds.includes(s.id)} onCheckedChange={() => toggleSeg(s.id)} />
-                          <Layers className="h-4 w-4 text-primary shrink-0" />
-                          <span className="text-sm truncate flex-1">{s.name}</span>
-                          <span className="text-xs text-muted-foreground">{s.total_contacts}</span>
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex w-full items-center justify-between rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-foreground hover:bg-secondary/80 transition-colors">
+                          <span>{selectedSegIds.length > 0 ? `${selectedSegIds.length} segmentação(ões) selecionada(s)` : "Selecione as segmentações..."}</span>
+                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-1 space-y-0.5 rounded-lg border border-border bg-secondary/30 p-1.5 max-h-48 overflow-y-auto">
+                          {segmentations.map((s) => (
+                            <div
+                              key={s.id}
+                              className="flex items-center gap-3 rounded-md px-2.5 py-2 hover:bg-secondary/80 cursor-pointer transition-colors"
+                              onClick={() => toggleSeg(s.id)}
+                            >
+                              <Checkbox checked={selectedSegIds.includes(s.id)} onCheckedChange={() => toggleSeg(s.id)} />
+                              <Layers className="h-4 w-4 text-primary shrink-0" />
+                              <span className="text-sm truncate flex-1">{s.name}</span>
+                              <span className="text-xs text-muted-foreground">{s.total_contacts}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                 </div>
 
