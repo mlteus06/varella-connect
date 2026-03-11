@@ -412,7 +412,6 @@ export default function Segmentation() {
               </div>
             </DialogContent>
             </Dialog>
-          </div>
         </div>
 
         <Card className="bg-card border-border">
