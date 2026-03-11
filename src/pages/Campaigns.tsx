@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Loader2, Plus, Trash2, Megaphone, FileSpreadsheet, Layers, Send, Clock, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface ContactList {
   id: string;
@@ -49,8 +49,8 @@ export default function Campaigns() {
   const [segmentations, setSegmentations] = useState<SegmentationListItem[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [client, setClient] = useState<SupabaseClient | null>(null);
 
-  // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [campaignName, setCampaignName] = useState("");
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
@@ -63,26 +63,32 @@ export default function Campaigns() {
       let config = getSupabaseConfig();
       if (!config) config = await loadConfigFromCloud();
       if (!config) { navigate("/onboarding"); return; }
-      fetchData();
+      const ext = createExternalClient();
+      if (!ext) { navigate("/onboarding"); return; }
+      setClient(ext);
     };
     init();
   }, [navigate]);
 
+  useEffect(() => {
+    if (client) fetchData();
+  }, [client]);
+
   const fetchData = async () => {
+    if (!client) return;
     setLoading(true);
 
     // Campaigns
-    const { data: campsData } = await supabase
+    const { data: campsData } = await client
       .from("campaigns")
       .select("id, name, status, created_at, template_id")
       .order("created_at", { ascending: false });
 
     if (campsData) {
-      // Get template titles
       const templateIds = [...new Set(campsData.filter((c: any) => c.template_id).map((c: any) => c.template_id))];
       let templateMap: Record<string, string> = {};
       if (templateIds.length > 0) {
-        const { data: tpls } = await supabase
+        const { data: tpls } = await client
           .from("message_templates")
           .select("id, title")
           .in("id", templateIds);
@@ -97,7 +103,7 @@ export default function Campaigns() {
     }
 
     // Contact lists
-    const { data: listsData } = await supabase
+    const { data: listsData } = await client
       .from("contact_lists")
       .select("id, name, type")
       .order("created_at", { ascending: false });
@@ -105,7 +111,7 @@ export default function Campaigns() {
     if (listsData) {
       const withCounts = await Promise.all(
         listsData.map(async (l: any) => {
-          const { count } = await supabase
+          const { count } = await client
             .from("base_contacts")
             .select("*", { count: "exact", head: true })
             .eq("list_id", l.id);
@@ -116,7 +122,7 @@ export default function Campaigns() {
     }
 
     // Segmentation lists
-    const { data: segsData } = await supabase
+    const { data: segsData } = await client
       .from("segmentation_lists")
       .select("id, name")
       .order("created_at", { ascending: false });
@@ -124,7 +130,7 @@ export default function Campaigns() {
     if (segsData) {
       const withContacts = await Promise.all(
         segsData.map(async (s: any) => {
-          const { data: sources } = await supabase
+          const { data: sources } = await client
             .from("segmentation_sources")
             .select("contact_list_id")
             .eq("segmentation_id", s.id);
@@ -132,7 +138,7 @@ export default function Campaigns() {
           let total = 0;
           if (sources) {
             for (const src of sources) {
-              const { count } = await supabase
+              const { count } = await client
                 .from("base_contacts")
                 .select("*", { count: "exact", head: true })
                 .eq("list_id", src.contact_list_id);
@@ -146,7 +152,7 @@ export default function Campaigns() {
     }
 
     // Templates
-    const { data: tplsData } = await supabase
+    const { data: tplsData } = await client
       .from("message_templates")
       .select("id, title, content")
       .order("created_at", { ascending: false });
@@ -167,19 +173,17 @@ export default function Campaigns() {
   };
 
   const handleCreateCampaign = async () => {
+    if (!client) return;
     if (!campaignName.trim()) { toast.error("Dê um nome para a campanha."); return; }
     if (selectedListIds.length === 0 && selectedSegIds.length === 0) { toast.error("Selecione pelo menos uma planilha ou segmentação."); return; }
     if (!selectedTemplateId) { toast.error("Selecione um template."); return; }
 
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
 
     // Create campaign
-    const { data: campaign, error } = await supabase
+    const { data: campaign, error } = await client
       .from("campaigns")
       .insert({
-        user_id: user.id,
         name: campaignName.trim(),
         status: "pendente",
         template_id: selectedTemplateId,
@@ -195,15 +199,14 @@ export default function Campaigns() {
     selectedSegIds.forEach((id) => sources.push({ campaign_id: campaign.id, source_type: "segmentation", source_id: id }));
 
     if (sources.length > 0) {
-      await supabase.from("campaign_sources").insert(sources);
+      await client.from("campaign_sources").insert(sources);
     }
 
     // Collect all contacts (deduplicate by phone)
     const allPhones = new Map<string, { nome: string | null; telefone: string }>();
 
-    // From direct lists
     for (const listId of selectedListIds) {
-      const { data: contacts } = await supabase
+      const { data: contacts } = await client
         .from("base_contacts")
         .select("nome, telefone")
         .eq("list_id", listId);
@@ -212,15 +215,14 @@ export default function Campaigns() {
       });
     }
 
-    // From segmentations
     for (const segId of selectedSegIds) {
-      const { data: segSources } = await supabase
+      const { data: segSources } = await client
         .from("segmentation_sources")
         .select("contact_list_id")
         .eq("segmentation_id", segId);
       if (segSources) {
         for (const src of segSources) {
-          const { data: contacts } = await supabase
+          const { data: contacts } = await client
             .from("base_contacts")
             .select("nome, telefone")
             .eq("list_id", src.contact_list_id);
@@ -231,7 +233,7 @@ export default function Campaigns() {
       }
     }
 
-    // Also save to campaign_contacts for the campaign dashboard
+    // Save to campaign_contacts
     const contactsArray = Array.from(allPhones.values());
     const batchSize = 500;
     for (let i = 0; i < contactsArray.length; i += batchSize) {
@@ -240,13 +242,12 @@ export default function Campaigns() {
         nome: c.nome,
         telefone: c.telefone,
       }));
-      await supabase.from("campaign_contacts").insert(batch);
+      await client.from("campaign_contacts").insert(batch);
     }
 
-    // Create disparos in external Supabase
+    // Create disparos
     const template = templates.find((t) => t.id === selectedTemplateId);
-    const client = createExternalClient();
-    if (client && template) {
+    if (template) {
       const disparos = contactsArray.map((c) => ({
         nome: c.nome,
         telefone: c.telefone,
@@ -271,7 +272,8 @@ export default function Campaigns() {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("campaigns").delete().eq("id", id);
+    if (!client) return;
+    const { error } = await client.from("campaigns").delete().eq("id", id);
     if (!error) {
       setCampaigns((prev) => prev.filter((c) => c.id !== id));
       toast.success("Campanha excluída.");

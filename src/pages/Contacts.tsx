@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
+import { createExternalClient, getSupabaseConfig, loadConfigFromCloud } from "@/lib/supabase-client";
 import { AppHeader } from "@/components/AppHeader";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, Plus, Upload, Trash2, Users, FileSpreadsheet, UserPlus, Eye, Database } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface ContactList {
   id: string;
@@ -34,6 +34,7 @@ export default function Contacts() {
   const [lists, setLists] = useState<ContactList[]>([]);
   const [totalContacts, setTotalContacts] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [client, setClient] = useState<SupabaseClient | null>(null);
 
   // Upload dialog
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -60,14 +61,21 @@ export default function Contacts() {
       let config = getSupabaseConfig();
       if (!config) config = await loadConfigFromCloud();
       if (!config) { navigate("/onboarding"); return; }
-      fetchData();
+      const ext = createExternalClient();
+      if (!ext) { navigate("/onboarding"); return; }
+      setClient(ext);
     };
     init();
   }, [navigate]);
 
+  useEffect(() => {
+    if (client) fetchData();
+  }, [client]);
+
   const fetchData = async () => {
+    if (!client) return;
     setLoading(true);
-    const { data: listsData } = await supabase
+    const { data: listsData } = await client
       .from("contact_lists")
       .select("id, name, type, created_at")
       .order("created_at", { ascending: false });
@@ -75,7 +83,7 @@ export default function Contacts() {
     if (listsData) {
       const withCounts = await Promise.all(
         listsData.map(async (l: any) => {
-          const { count } = await supabase
+          const { count } = await client
             .from("base_contacts")
             .select("*", { count: "exact", head: true })
             .eq("list_id", l.id);
@@ -85,8 +93,7 @@ export default function Contacts() {
       setLists(withCounts);
     }
 
-    // Total contacts (all)
-    const { count } = await supabase
+    const { count } = await client
       .from("base_contacts")
       .select("*", { count: "exact", head: true });
     setTotalContacts(count || 0);
@@ -135,16 +142,15 @@ export default function Contacts() {
   };
 
   const handleUploadSave = async () => {
+    if (!client) return;
     if (!listName.trim()) { toast.error("Dê um nome para a planilha."); return; }
     if (uploadContacts.length === 0) { toast.error("Selecione uma planilha."); return; }
 
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
 
-    const { data: list, error } = await supabase
+    const { data: list, error } = await client
       .from("contact_lists")
-      .insert({ user_id: user.id, name: listName.trim(), type: "spreadsheet" })
+      .insert({ name: listName.trim(), type: "spreadsheet" })
       .select("id")
       .single();
 
@@ -153,12 +159,11 @@ export default function Contacts() {
     const batchSize = 500;
     for (let i = 0; i < uploadContacts.length; i += batchSize) {
       const batch = uploadContacts.slice(i, i + batchSize).map((c) => ({
-        user_id: user.id,
         list_id: list.id,
         nome: c.nome,
         telefone: c.telefone,
       }));
-      await supabase.from("base_contacts").insert(batch);
+      await client.from("base_contacts").insert(batch);
     }
 
     toast.success(`"${listName}" salva com ${uploadContacts.length} contatos!`);
@@ -171,24 +176,22 @@ export default function Contacts() {
   };
 
   const handleManualSave = async () => {
+    if (!client) return;
     if (!manualTelefone.trim()) { toast.error("Informe o telefone."); return; }
 
     setSavingManual(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSavingManual(false); return; }
 
     // Find or create a "Contatos Avulsos" list
-    let { data: manualList } = await supabase
+    let { data: manualList } = await client
       .from("contact_lists")
       .select("id")
       .eq("type", "manual")
-      .eq("user_id", user.id)
       .maybeSingle();
 
     if (!manualList) {
-      const { data: newList } = await supabase
+      const { data: newList } = await client
         .from("contact_lists")
-        .insert({ user_id: user.id, name: "Contatos Avulsos", type: "manual" })
+        .insert({ name: "Contatos Avulsos", type: "manual" })
         .select("id")
         .single();
       manualList = newList;
@@ -196,8 +199,7 @@ export default function Contacts() {
 
     if (!manualList) { toast.error("Erro ao criar lista."); setSavingManual(false); return; }
 
-    const { error } = await supabase.from("base_contacts").insert({
-      user_id: user.id,
+    const { error } = await client.from("base_contacts").insert({
       list_id: manualList.id,
       nome: manualNome.trim() || null,
       telefone: manualTelefone.trim(),
@@ -216,10 +218,11 @@ export default function Contacts() {
   };
 
   const handleViewList = async (list: ContactList) => {
+    if (!client) return;
     setViewList(list);
     setViewOpen(true);
     setLoadingView(true);
-    const { data } = await supabase
+    const { data } = await client
       .from("base_contacts")
       .select("id, nome, telefone, list_id")
       .eq("list_id", list.id)
@@ -229,7 +232,8 @@ export default function Contacts() {
   };
 
   const handleDeleteList = async (id: string) => {
-    const { error } = await supabase.from("contact_lists").delete().eq("id", id);
+    if (!client) return;
+    const { error } = await client.from("contact_lists").delete().eq("id", id);
     if (!error) {
       setLists((prev) => prev.filter((l) => l.id !== id));
       toast.success("Planilha excluída.");
