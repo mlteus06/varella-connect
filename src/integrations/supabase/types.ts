@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      base_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          list_id: string | null
+          nome: string | null
+          telefone: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          list_id?: string | null
+          nome?: string | null
+          telefone: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          list_id?: string | null
+          nome?: string | null
+          telefone?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "base_contacts_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_contacts: {
         Row: {
           campaign_id: string
@@ -43,23 +78,90 @@ export type Database = {
           },
         ]
       }
+      campaign_sources: {
+        Row: {
+          campaign_id: string
+          id: string
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          campaign_id: string
+          id?: string
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          campaign_id?: string
+          id?: string
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_sources_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           created_at: string
           id: string
           name: string
+          status: string
+          template_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          status?: string
+          template_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          status?: string
+          template_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_lists: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
           user_id?: string
         }
         Relationships: []
@@ -87,6 +189,60 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      segmentation_lists: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      segmentation_sources: {
+        Row: {
+          contact_list_id: string
+          id: string
+          segmentation_id: string
+        }
+        Insert: {
+          contact_list_id: string
+          id?: string
+          segmentation_id: string
+        }
+        Update: {
+          contact_list_id?: string
+          id?: string
+          segmentation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "segmentation_sources_contact_list_id_fkey"
+            columns: ["contact_list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segmentation_sources_segmentation_id_fkey"
+            columns: ["segmentation_id"]
+            isOneToOne: false
+            referencedRelation: "segmentation_lists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_configs: {
         Row: {
