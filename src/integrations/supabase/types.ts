@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -254,10 +252,7 @@ export type Database = {
           last_message: string
           supabase_api_key: string
           supabase_url: string
-<<<<<<< HEAD
           token_exact: string | null
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
           updated_at: string
           user_id: string
         }
@@ -267,10 +262,7 @@ export type Database = {
           last_message?: string
           supabase_api_key: string
           supabase_url: string
-<<<<<<< HEAD
           token_exact?: string | null
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
           updated_at?: string
           user_id: string
         }
@@ -280,10 +272,7 @@ export type Database = {
           last_message?: string
           supabase_api_key?: string
           supabase_url?: string
-<<<<<<< HEAD
           token_exact?: string | null
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
           updated_at?: string
           user_id?: string
         }

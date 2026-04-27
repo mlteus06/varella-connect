@@ -8,13 +8,10 @@ export interface SupabaseConfig {
   apiKey: string;
 }
 
-<<<<<<< HEAD
 export interface UserCloudConfig extends SupabaseConfig {
   tokenExact: string | null;
 }
 
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
 export function saveSupabaseConfig(config: SupabaseConfig) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
@@ -39,28 +36,21 @@ export function createExternalClient(): SupabaseClient | null {
   return createClient(config.url, config.apiKey);
 }
 
-// Save config to Cloud DB
 export async function saveConfigToCloud(supabaseUrl: string, supabaseApiKey: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado");
 
-<<<<<<< HEAD
   const { data: currentConfig } = await supabase
     .from("user_configs")
     .select("token_exact")
     .maybeSingle();
 
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
   const { error } = await supabase.from("user_configs").upsert(
     {
       user_id: user.id,
       supabase_url: supabaseUrl,
       supabase_api_key: supabaseApiKey,
-<<<<<<< HEAD
       token_exact: currentConfig?.token_exact ?? null,
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
     },
     { onConflict: "user_id" }
   );
@@ -69,7 +59,6 @@ export async function saveConfigToCloud(supabaseUrl: string, supabaseApiKey: str
   saveSupabaseConfig({ url: supabaseUrl, apiKey: supabaseApiKey });
 }
 
-// Load config from Cloud DB into localStorage
 export async function loadConfigFromCloud(): Promise<SupabaseConfig | null> {
   const { data, error } = await supabase
     .from("user_configs")
@@ -86,7 +75,6 @@ export async function loadConfigFromCloud(): Promise<SupabaseConfig | null> {
   return config;
 }
 
-<<<<<<< HEAD
 export async function loadUserCloudConfig(): Promise<UserCloudConfig | null> {
   const { data, error } = await supabase
     .from("user_configs")
@@ -105,9 +93,6 @@ export async function loadUserCloudConfig(): Promise<UserCloudConfig | null> {
   return config;
 }
 
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
-// Get last message from Cloud
 export async function getLastMessage(): Promise<string> {
   const { data } = await supabase
     .from("user_configs")
@@ -116,7 +101,6 @@ export async function getLastMessage(): Promise<string> {
   return data?.last_message || "Olá";
 }
 
-// Save last message to Cloud
 export async function saveLastMessage(message: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
@@ -126,7 +110,6 @@ export async function saveLastMessage(message: string) {
     .eq("user_id", user.id);
 }
 
-<<<<<<< HEAD
 export async function saveExactTokenToCloud(tokenExact: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado");
@@ -163,11 +146,8 @@ export async function getExactTokenFromCloud(): Promise<string | null> {
   return data.token_exact;
 }
 
-=======
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
 export async function initializeExternalTables(client: SupabaseClient): Promise<{ success: boolean; message: string }> {
   try {
-    // Try creating all tables via exec_sql RPC
     const { error: createError } = await client.rpc("exec_sql", {
       query: `
         CREATE TABLE IF NOT EXISTS disparos (
@@ -239,7 +219,6 @@ export async function initializeExternalTables(client: SupabaseClient): Promise<
     });
 
     if (createError) {
-      // If exec_sql doesn't exist, check if tables already exist
       const { error: checkError } = await client.from("disparos").select("id").limit(1);
       if (!checkError) {
         return { success: true, message: "Conexão validada com sucesso." };
@@ -251,11 +230,7 @@ export async function initializeExternalTables(client: SupabaseClient): Promise<
     }
 
     return { success: true, message: "Estrutura criada com sucesso!" };
-<<<<<<< HEAD
   } catch {
-=======
-  } catch (err) {
->>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
     return { success: false, message: "Erro na conexão. Verifique suas credenciais." };
   }
 }
