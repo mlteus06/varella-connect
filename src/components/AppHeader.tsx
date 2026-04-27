@@ -2,7 +2,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { clearSupabaseConfig } from "@/lib/supabase-client";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+<<<<<<< HEAD
 import { LogOut, LayoutDashboard, Users, Layers, FileText, Megaphone, PlugZap } from "lucide-react";
+=======
+import { LogOut, LayoutDashboard, Users, Layers, FileText, Megaphone } from "lucide-react";
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
 
 export function AppHeader() {
   const navigate = useNavigate();
@@ -20,7 +24,10 @@ export function AppHeader() {
     { path: "/segmentacao", label: "Segmentação", icon: Layers },
     { path: "/templates", label: "Templates", icon: FileText },
     { path: "/campanhas", label: "Campanhas", icon: Megaphone },
+<<<<<<< HEAD
     { path: "/integracoes", label: "Integrações", icon: PlugZap },
+=======
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
   ];
 
   return (

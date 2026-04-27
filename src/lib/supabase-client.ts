@@ -8,10 +8,13 @@ export interface SupabaseConfig {
   apiKey: string;
 }
 
+<<<<<<< HEAD
 export interface UserCloudConfig extends SupabaseConfig {
   tokenExact: string | null;
 }
 
+=======
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
 export function saveSupabaseConfig(config: SupabaseConfig) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
@@ -41,17 +44,23 @@ export async function saveConfigToCloud(supabaseUrl: string, supabaseApiKey: str
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado");
 
+<<<<<<< HEAD
   const { data: currentConfig } = await supabase
     .from("user_configs")
     .select("token_exact")
     .maybeSingle();
 
+=======
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
   const { error } = await supabase.from("user_configs").upsert(
     {
       user_id: user.id,
       supabase_url: supabaseUrl,
       supabase_api_key: supabaseApiKey,
+<<<<<<< HEAD
       token_exact: currentConfig?.token_exact ?? null,
+=======
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
     },
     { onConflict: "user_id" }
   );
@@ -77,6 +86,7 @@ export async function loadConfigFromCloud(): Promise<SupabaseConfig | null> {
   return config;
 }
 
+<<<<<<< HEAD
 export async function loadUserCloudConfig(): Promise<UserCloudConfig | null> {
   const { data, error } = await supabase
     .from("user_configs")
@@ -95,6 +105,8 @@ export async function loadUserCloudConfig(): Promise<UserCloudConfig | null> {
   return config;
 }
 
+=======
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
 // Get last message from Cloud
 export async function getLastMessage(): Promise<string> {
   const { data } = await supabase
@@ -114,6 +126,7 @@ export async function saveLastMessage(message: string) {
     .eq("user_id", user.id);
 }
 
+<<<<<<< HEAD
 export async function saveExactTokenToCloud(tokenExact: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado");
@@ -150,6 +163,8 @@ export async function getExactTokenFromCloud(): Promise<string | null> {
   return data.token_exact;
 }
 
+=======
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
 export async function initializeExternalTables(client: SupabaseClient): Promise<{ success: boolean; message: string }> {
   try {
     // Try creating all tables via exec_sql RPC
@@ -236,7 +251,11 @@ export async function initializeExternalTables(client: SupabaseClient): Promise<
     }
 
     return { success: true, message: "Estrutura criada com sucesso!" };
+<<<<<<< HEAD
   } catch {
+=======
+  } catch (err) {
+>>>>>>> f5e96e4bbdf821c34c7b2fcc682028a9c93acf47
     return { success: false, message: "Erro na conexão. Verifique suas credenciais." };
   }
 }
