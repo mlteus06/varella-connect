@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Network, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, Network, ChevronRight, ArchiveX } from "lucide-react";
 import { getSupabaseConfig, getExactTokenFromCloud } from "@/lib/supabase-client";
 import { ExactFunnel, fetchExactFunnels } from "@/lib/exact-spotter";
 import { toast } from "sonner";
@@ -103,21 +103,42 @@ export default function ExactSpotterFunnels() {
             ) : (
               <div className="space-y-3">
                 {funnels.map((funnel) => (
-                  <button
+                  <div
                     key={funnel.id}
-                    onClick={() =>
-                      navigate(`/segmentacao/exact-spotter/${funnel.id}/etapas`, {
-                        state: { funnelName: funnel.value },
-                      })
-                    }
-                    className="flex w-full items-center justify-between rounded-lg border border-border bg-secondary/50 p-4 text-left transition-colors hover:bg-secondary"
+                    className="rounded-lg border border-border bg-secondary/50 p-4"
                   >
-                    <div>
-                      <div className="font-medium text-sm text-foreground">{funnel.value}</div>
-                      <p className="text-xs text-muted-foreground">ID do funil: {funnel.id}</p>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="font-medium text-sm text-foreground">{funnel.value}</div>
+                        <p className="text-xs text-muted-foreground">ID do funil: {funnel.id}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() =>
+                            navigate(`/segmentacao/exact-spotter/${funnel.id}/etapas`, {
+                              state: { funnelName: funnel.value, focusDiscarded: true },
+                            })
+                          }
+                        >
+                          <ArchiveX className="h-4 w-4" />
+                          Leads descartados
+                        </Button>
+                        <Button
+                          className="gap-2"
+                          onClick={() =>
+                            navigate(`/segmentacao/exact-spotter/${funnel.id}/etapas`, {
+                              state: { funnelName: funnel.value },
+                            })
+                          }
+                        >
+                          Ver etapas
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

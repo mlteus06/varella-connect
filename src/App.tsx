@@ -15,6 +15,7 @@ import CampaignDashboard from "./pages/CampaignDashboard";
 import Integrations from "./pages/Integrations";
 import ExactSpotterFunnels from "./pages/ExactSpotterFunnels";
 import ExactSpotterStages from "./pages/ExactSpotterStages";
+import ExactSpotterDiscarded from "./pages/ExactSpotterDiscarded";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/contatos" element={<AuthGuard><Contacts /></AuthGuard>} />
           <Route path="/segmentacao" element={<AuthGuard><Segmentation /></AuthGuard>} />
           <Route path="/segmentacao/exact-spotter" element={<AuthGuard><ExactSpotterFunnels /></AuthGuard>} />
+          <Route path="/segmentacao/exact-spotter/descartados" element={<AuthGuard><ExactSpotterDiscarded /></AuthGuard>} />
           <Route path="/segmentacao/exact-spotter/:funnelId/etapas" element={<AuthGuard><ExactSpotterStages /></AuthGuard>} />
           <Route path="/templates" element={<AuthGuard><Templates /></AuthGuard>} />
           <Route path="/campanhas" element={<AuthGuard><Campaigns /></AuthGuard>} />

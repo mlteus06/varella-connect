@@ -192,6 +192,68 @@ export async function fetchExactContactsByStage(
   return Array.from(uniqueContacts.values());
 }
 
+export async function fetchExactContactsByFunnel(
+  tokenExact: string,
+  funnelId: number
+): Promise<ExactImportedContact[]> {
+  const filter = encodeURIComponent(`funnelId eq ${funnelId} and stage ne ${quoteODataString("Descartado")}`);
+  const select = encodeURIComponent("id,lead,stage,funnelId,phone1,phone2,persons");
+  const leads = await fetchAllPages<ExactLead>(
+    `/LeadsAndPersons?$filter=${filter}&$select=${select}&$top=${EXACT_PAGE_SIZE}`,
+    tokenExact
+  );
+
+  return mapExactLeadsToImportedContacts(leads);
+}
+
+function mapExactLeadsToImportedContacts(leads: ExactLead[]): ExactImportedContact[] {
+  const uniqueContacts = new Map<string, ExactImportedContact>();
+
+  leads.forEach((lead) => {
+    const mainPerson = lead.persons.find((person) => person.mainContact) ?? lead.persons[0];
+    const telefone =
+      mainPerson?.phone1?.trim() ||
+      mainPerson?.phone2?.trim() ||
+      lead.phone1?.trim() ||
+      lead.phone2?.trim();
+
+    if (!telefone) return;
+
+    const nome = mainPerson?.name?.trim() || lead.lead?.trim() || null;
+
+    if (!uniqueContacts.has(telefone)) {
+      uniqueContacts.set(telefone, { nome, telefone });
+    }
+  });
+
+  return Array.from(uniqueContacts.values());
+}
+
+export async function fetchExactDiscardedContacts(tokenExact: string): Promise<ExactImportedContact[]> {
+  const filter = encodeURIComponent(`stage eq ${quoteODataString("Descartado")}`);
+  const select = encodeURIComponent("id,lead,stage,funnelId,phone1,phone2,persons");
+  const leads = await fetchAllPages<ExactLead>(
+    `/LeadsAndPersons?$filter=${filter}&$select=${select}&$top=${EXACT_PAGE_SIZE}`,
+    tokenExact
+  );
+
+  return mapExactLeadsToImportedContacts(leads);
+}
+
+export async function fetchExactDiscardedContactsByFunnel(
+  tokenExact: string,
+  funnelId: number
+): Promise<ExactImportedContact[]> {
+  const filter = encodeURIComponent(`funnelId eq ${funnelId} and stage eq ${quoteODataString("Descartado")}`);
+  const select = encodeURIComponent("id,lead,stage,funnelId,phone1,phone2,persons");
+  const leads = await fetchAllPages<ExactLead>(
+    `/LeadsAndPersons?$filter=${filter}&$select=${select}&$top=${EXACT_PAGE_SIZE}`,
+    tokenExact
+  );
+
+  return mapExactLeadsToImportedContacts(leads);
+}
+
 export function buildExactSegmentationName(funnelName: string, stageName: string, date = new Date()) {
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -200,4 +262,14 @@ export function buildExactSegmentationName(funnelName: string, stageName: string
   }).format(date);
 
   return `Exact Spotter - ${funnelName} - ${stageName} - ${formattedDate}`;
+}
+
+export function buildExactDiscardedSegmentationName(date = new Date()) {
+  const formattedDate = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+
+  return `Exact Spotter - Leads descartados - ${formattedDate}`;
 }
