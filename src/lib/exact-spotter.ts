@@ -1,5 +1,6 @@
 const EXACT_API_BASE_URL = "https://api.exactspotter.com/v3";
 const EXACT_PAGE_SIZE = 500;
+const EXACT_REQUEST_TIMEOUT_MS = 20000;
 
 export interface ExactFunnel {
   id: number;
@@ -52,10 +53,26 @@ function buildHeaders(tokenExact: string): HeadersInit {
 }
 
 async function fetchExact<T>(url: string, tokenExact: string): Promise<ODataResponse<T>> {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: buildHeaders(tokenExact),
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), EXACT_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method: "GET",
+      headers: buildHeaders(tokenExact),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("A consulta ao Exact Spotter demorou demais para responder.");
+    }
+
+    throw new Error("Nao foi possivel se conectar ao Exact Spotter.");
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -68,8 +85,14 @@ async function fetchExact<T>(url: string, tokenExact: string): Promise<ODataResp
 async function fetchAllPages<T>(path: string, tokenExact: string): Promise<T[]> {
   const items: T[] = [];
   let nextUrl: string | undefined = `${EXACT_API_BASE_URL}${path}`;
+  const visitedUrls = new Set<string>();
 
   while (nextUrl) {
+    if (visitedUrls.has(nextUrl)) {
+      throw new Error("A paginacao do Exact Spotter retornou um loop inesperado.");
+    }
+
+    visitedUrls.add(nextUrl);
     const payload = await fetchExact<T>(nextUrl, tokenExact);
     items.push(...payload.value);
     nextUrl = payload["@odata.nextLink"];

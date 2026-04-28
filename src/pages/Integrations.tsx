@@ -17,24 +17,37 @@ export default function Integrations() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     const init = async () => {
-      const localConfig = getSupabaseConfig();
-      if (!localConfig) {
-        navigate("/onboarding");
-        return;
-      }
+      try {
+        const localConfig = getSupabaseConfig();
+        if (!localConfig) {
+          navigate("/onboarding");
+          return;
+        }
 
-      const cloudConfig = await loadUserCloudConfig();
-      if (!cloudConfig) {
-        navigate("/onboarding");
-        return;
-      }
+        const cloudConfig = await loadUserCloudConfig();
+        if (!cloudConfig) {
+          navigate("/onboarding");
+          return;
+        }
 
-      setTokenExact(cloudConfig.tokenExact ?? "");
-      setLoading(false);
+        if (active) {
+          setTokenExact(cloudConfig.tokenExact ?? "");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
     };
 
     init();
+
+    return () => {
+      active = false;
+    };
   }, [navigate]);
 
   const handleSave = async () => {
@@ -50,7 +63,7 @@ export default function Integrations() {
       await saveExactTokenToCloud(tokenExact);
       setFeedback({ type: "success", message: "Token do Exact Spotter salvo com sucesso." });
     } catch (error: any) {
-      setFeedback({ type: "error", message: error?.message || "Não foi possível salvar o token." });
+      setFeedback({ type: "error", message: error?.message || "Nao foi possivel salvar o token." });
     } finally {
       setSaving(false);
     }
@@ -61,9 +74,9 @@ export default function Integrations() {
       <AppHeader />
       <main className="container py-8 animate-fade-in">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-foreground">Integrações</h2>
+          <h2 className="text-2xl font-bold text-foreground">Integracoes</h2>
           <p className="text-sm text-muted-foreground">
-            Conecte o Disparador ao Exact Spotter para criar segmentações a partir dos seus funis.
+            Conecte o Disparador ao Exact Spotter para criar segmentacoes a partir dos seus funis.
           </p>
         </div>
 
@@ -74,7 +87,7 @@ export default function Integrations() {
               Exact Spotter
             </CardTitle>
             <CardDescription>
-              Salve o seu `token_exact` para habilitar a importação de contatos por funil e etapa.
+              Salve o seu `token_exact` para habilitar a importacao de contatos por funil e etapa.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -100,8 +113,8 @@ export default function Integrations() {
                 </div>
 
                 <div className="rounded-lg border border-border bg-secondary/50 p-4 text-xs text-muted-foreground">
-                  O token fica salvo em `user_configs.token_exact` e será usado apenas para listar funis, etapas e contatos do
-                  Exact Spotter durante a criação da segmentação.
+                  O token fica salvo em `user_configs.token_exact` e sera usado apenas para listar funis, etapas e
+                  contatos do Exact Spotter durante a criacao da segmentacao.
                 </div>
 
                 {feedback && (
@@ -125,7 +138,7 @@ export default function Integrations() {
                       Salvando...
                     </>
                   ) : (
-                    "Salvar integração"
+                    "Salvar integracao"
                   )}
                 </Button>
               </>

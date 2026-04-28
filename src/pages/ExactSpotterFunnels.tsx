@@ -12,32 +12,50 @@ export default function ExactSpotterFunnels() {
   const navigate = useNavigate();
   const [funnels, setFunnels] = useState<ExactFunnel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     const init = async () => {
-      if (!getSupabaseConfig()) {
-        navigate("/onboarding");
-        return;
-      }
-
-      const tokenExact = await getExactTokenFromCloud();
-      if (!tokenExact) {
-        toast.error("Salve o token do Exact Spotter antes de importar.");
-        navigate("/integracoes");
-        return;
-      }
-
       try {
+        setPageError(null);
+
+        if (!getSupabaseConfig()) {
+          toast.error("Configure o Supabase antes de usar essa integracao.");
+          navigate("/onboarding");
+          return;
+        }
+
+        const tokenExact = await getExactTokenFromCloud();
+        if (!tokenExact) {
+          toast.error("Salve o token do Exact Spotter antes de importar.");
+          navigate("/integracoes");
+          return;
+        }
+
         const data = await fetchExactFunnels(tokenExact);
-        setFunnels(data);
+        if (active) {
+          setFunnels(data);
+        }
       } catch (error: any) {
-        toast.error(error?.message || "Não foi possível carregar os funis do Exact Spotter.");
+        const message = error?.message || "Nao foi possivel carregar os funis do Exact Spotter.";
+        if (active) {
+          setPageError(message);
+          toast.error(message);
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     init();
+
+    return () => {
+      active = false;
+    };
   }, [navigate]);
 
   return (
@@ -52,7 +70,7 @@ export default function ExactSpotterFunnels() {
             <div>
               <h2 className="text-2xl font-bold text-foreground">Funis do Exact Spotter</h2>
               <p className="text-sm text-muted-foreground">
-                Escolha o funil da conta para continuar a criação da segmentação.
+                Escolha o funil da conta para continuar a criacao da segmentacao.
               </p>
             </div>
           </div>
@@ -62,14 +80,21 @@ export default function ExactSpotterFunnels() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Network className="h-5 w-5 text-primary" />
-              Funis disponíveis
+              Funis disponiveis
             </CardTitle>
-            <CardDescription>Ao selecionar um funil, você seguirá para a lista de etapas.</CardDescription>
+            <CardDescription>Ao selecionar um funil, voce seguira para a lista de etapas.</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : pageError ? (
+              <div className="space-y-4 py-12 text-center">
+                <p className="text-sm text-muted-foreground">{pageError}</p>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Tentar novamente
+                </Button>
               </div>
             ) : funnels.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">

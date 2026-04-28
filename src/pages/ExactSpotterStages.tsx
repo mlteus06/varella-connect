@@ -24,6 +24,7 @@ export default function ExactSpotterStages() {
   const { funnelId } = useParams<{ funnelId: string }>();
   const [stages, setStages] = useState<ExactStage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [importingStageId, setImportingStageId] = useState<number | null>(null);
   const [client, setClient] = useState<SupabaseClient | null>(null);
 
@@ -31,43 +32,63 @@ export default function ExactSpotterStages() {
   const parsedFunnelId = useMemo(() => Number(funnelId), [funnelId]);
 
   useEffect(() => {
+    let active = true;
+
     const init = async () => {
-      if (!getSupabaseConfig()) {
-        navigate("/onboarding");
-        return;
-      }
-
-      if (!funnelId || Number.isNaN(parsedFunnelId)) {
-        navigate("/segmentacao/exact-spotter");
-        return;
-      }
-
-      const externalClient = createExternalClient();
-      if (!externalClient) {
-        navigate("/onboarding");
-        return;
-      }
-
-      const tokenExact = await getExactTokenFromCloud();
-      if (!tokenExact) {
-        toast.error("Salve o token do Exact Spotter antes de importar.");
-        navigate("/integracoes");
-        return;
-      }
-
-      setClient(externalClient);
-
       try {
+        setPageError(null);
+
+        if (!getSupabaseConfig()) {
+          toast.error("Configure o Supabase antes de usar essa integracao.");
+          navigate("/onboarding");
+          return;
+        }
+
+        if (!funnelId || Number.isNaN(parsedFunnelId)) {
+          navigate("/segmentacao/exact-spotter");
+          return;
+        }
+
+        const externalClient = createExternalClient();
+        if (!externalClient) {
+          toast.error("Nao foi possivel acessar a configuracao atual do Supabase.");
+          navigate("/onboarding");
+          return;
+        }
+
+        const tokenExact = await getExactTokenFromCloud();
+        if (!tokenExact) {
+          toast.error("Salve o token do Exact Spotter antes de importar.");
+          navigate("/integracoes");
+          return;
+        }
+
+        if (active) {
+          setClient(externalClient);
+        }
+
         const data = await fetchExactStages(tokenExact, parsedFunnelId);
-        setStages(data);
+        if (active) {
+          setStages(data);
+        }
       } catch (error: any) {
-        toast.error(error?.message || "Não foi possível carregar as etapas do funil.");
+        const message = error?.message || "Nao foi possivel carregar as etapas do funil.";
+        if (active) {
+          setPageError(message);
+          toast.error(message);
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     init();
+
+    return () => {
+      active = false;
+    };
   }, [funnelId, navigate, parsedFunnelId]);
 
   const handleImportStage = async (stage: ExactStage) => {
@@ -75,7 +96,7 @@ export default function ExactSpotterStages() {
 
     const tokenExact = await getExactTokenFromCloud();
     if (!tokenExact) {
-      toast.error("Token do Exact Spotter não encontrado.");
+      toast.error("Token do Exact Spotter nao encontrado.");
       navigate("/integracoes");
       return;
     }
@@ -85,7 +106,7 @@ export default function ExactSpotterStages() {
     try {
       const contacts = await fetchExactContactsByStage(tokenExact, parsedFunnelId, stage.value);
       if (contacts.length === 0) {
-        toast.error("Essa etapa não retornou contatos com telefone.");
+        toast.error("Essa etapa nao retornou contatos com telefone.");
         return;
       }
 
@@ -98,7 +119,7 @@ export default function ExactSpotterStages() {
         .single();
 
       if (contactListError || !contactList) {
-        throw new Error("Não foi possível criar a lista de contatos no Disparador.");
+        throw new Error("Nao foi possivel criar a lista de contatos no Disparador.");
       }
 
       const batchSize = 500;
@@ -111,7 +132,7 @@ export default function ExactSpotterStages() {
 
         const { error } = await client.from("base_contacts").insert(batch);
         if (error) {
-          throw new Error("Não foi possível salvar os contatos importados.");
+          throw new Error("Nao foi possivel salvar os contatos importados.");
         }
       }
 
@@ -122,7 +143,7 @@ export default function ExactSpotterStages() {
         .single();
 
       if (segmentationError || !segmentation) {
-        throw new Error("Não foi possível criar a segmentação importada.");
+        throw new Error("Nao foi possivel criar a segmentacao importada.");
       }
 
       const { error: sourceError } = await client.from("segmentation_sources").insert({
@@ -131,13 +152,13 @@ export default function ExactSpotterStages() {
       });
 
       if (sourceError) {
-        throw new Error("Não foi possível vincular a lista à segmentação.");
+        throw new Error("Nao foi possivel vincular a lista a segmentacao.");
       }
 
-      toast.success(`Segmentação criada com ${contacts.length} contatos.`);
+      toast.success(`Segmentacao criada com ${contacts.length} contatos.`);
       navigate("/segmentacao");
     } catch (error: any) {
-      toast.error(error?.message || "Não foi possível importar os contatos da etapa.");
+      toast.error(error?.message || "Nao foi possivel importar os contatos da etapa.");
     } finally {
       setImportingStageId(null);
     }
@@ -165,16 +186,23 @@ export default function ExactSpotterStages() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <ListTree className="h-5 w-5 text-primary" />
-              Etapas disponíveis
+              Etapas disponiveis
             </CardTitle>
             <CardDescription>
-              Ao selecionar uma etapa, o sistema cria automaticamente a segmentação com os contatos encontrados.
+              Ao selecionar uma etapa, o sistema cria automaticamente a segmentacao com os contatos encontrados.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : pageError ? (
+              <div className="space-y-4 py-12 text-center">
+                <p className="text-sm text-muted-foreground">{pageError}</p>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Tentar novamente
+                </Button>
               </div>
             ) : stages.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
@@ -188,7 +216,9 @@ export default function ExactSpotterStages() {
                     className="flex items-center justify-between rounded-lg border border-border bg-secondary/50 p-4"
                   >
                     <div>
-                      <div className="font-medium text-sm text-foreground">{stage.position}. {stage.value}</div>
+                      <div className="font-medium text-sm text-foreground">
+                        {stage.position}. {stage.value}
+                      </div>
                       <p className="text-xs text-muted-foreground">ID da etapa: {stage.id}</p>
                     </div>
                     <Button
@@ -204,7 +234,7 @@ export default function ExactSpotterStages() {
                       ) : (
                         <>
                           <Download className="h-4 w-4" />
-                          Criar segmentação
+                          Criar segmentacao
                         </>
                       )}
                     </Button>
