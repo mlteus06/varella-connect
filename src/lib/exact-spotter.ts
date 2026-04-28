@@ -134,6 +134,32 @@ async function fetchAllPages<T>(path: string, tokenExact: string): Promise<T[]> 
   return items;
 }
 
+async function fetchLeadPages(path: string, tokenExact: string): Promise<ExactLead[]> {
+  const items: ExactLead[] = [];
+  const seenIds = new Set<number>();
+
+  for (let skip = 0; skip < EXACT_MAX_PAGES * EXACT_PAGE_SIZE; skip += EXACT_PAGE_SIZE) {
+    const separator = path.includes("?") ? "&" : "?";
+    const pagePath = `${path}${separator}$skip=${skip}`;
+    const payload = await fetchExact<ExactLead>(`${EXACT_API_BASE_URL}${pagePath}`, tokenExact);
+    const pageItems = Array.isArray(payload.value) ? payload.value : [];
+
+    if (pageItems.length === 0) {
+      break;
+    }
+
+    const newItems = pageItems.filter((item) => !seenIds.has(item.id));
+    newItems.forEach((item) => seenIds.add(item.id));
+    items.push(...newItems);
+
+    if (pageItems.length < EXACT_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return items;
+}
+
 function quoteODataString(value: string) {
   return `'${value.replace(/'/g, "''")}'`;
 }
@@ -165,7 +191,7 @@ export async function fetchExactContactsByStage(
 ): Promise<ExactImportedContact[]> {
   const filter = encodeURIComponent(`funnelId eq ${funnelId} and stage eq ${quoteODataString(stageName)}`);
   const select = encodeURIComponent("id,lead,stage,funnelId,phone1,phone2,persons");
-  const leads = await fetchAllPages<ExactLead>(
+  const leads = await fetchLeadPages(
     `/LeadsAndPersons?$filter=${filter}&$select=${select}&$top=${EXACT_PAGE_SIZE}`,
     tokenExact
   );
@@ -198,7 +224,7 @@ export async function fetchExactContactsByFunnel(
 ): Promise<ExactImportedContact[]> {
   const filter = encodeURIComponent(`funnelId eq ${funnelId} and stage ne ${quoteODataString("Descartado")}`);
   const select = encodeURIComponent("id,lead,stage,funnelId,phone1,phone2,persons");
-  const leads = await fetchAllPages<ExactLead>(
+  const leads = await fetchLeadPages(
     `/LeadsAndPersons?$filter=${filter}&$select=${select}&$top=${EXACT_PAGE_SIZE}`,
     tokenExact
   );
@@ -232,7 +258,7 @@ function mapExactLeadsToImportedContacts(leads: ExactLead[]): ExactImportedConta
 export async function fetchExactDiscardedContacts(tokenExact: string): Promise<ExactImportedContact[]> {
   const filter = encodeURIComponent(`stage eq ${quoteODataString("Descartado")}`);
   const select = encodeURIComponent("id,lead,stage,funnelId,phone1,phone2,persons");
-  const leads = await fetchAllPages<ExactLead>(
+  const leads = await fetchLeadPages(
     `/LeadsAndPersons?$filter=${filter}&$select=${select}&$top=${EXACT_PAGE_SIZE}`,
     tokenExact
   );
@@ -246,7 +272,7 @@ export async function fetchExactDiscardedContactsByFunnel(
 ): Promise<ExactImportedContact[]> {
   const filter = encodeURIComponent(`funnelId eq ${funnelId} and stage eq ${quoteODataString("Descartado")}`);
   const select = encodeURIComponent("id,lead,stage,funnelId,phone1,phone2,persons");
-  const leads = await fetchAllPages<ExactLead>(
+  const leads = await fetchLeadPages(
     `/LeadsAndPersons?$filter=${filter}&$select=${select}&$top=${EXACT_PAGE_SIZE}`,
     tokenExact
   );
