@@ -1,6 +1,7 @@
 const EXACT_API_BASE_URL = "https://api.exactspotter.com/v3";
 const EXACT_PAGE_SIZE = 500;
 const EXACT_REQUEST_TIMEOUT_MS = 20000;
+const EXACT_MAX_PAGES = 100;
 
 export interface ExactFunnel {
   id: number;
@@ -86,15 +87,47 @@ async function fetchAllPages<T>(path: string, tokenExact: string): Promise<T[]> 
   const items: T[] = [];
   let nextUrl: string | undefined = `${EXACT_API_BASE_URL}${path}`;
   const visitedUrls = new Set<string>();
+  const seenIds = new Set<string | number>();
+  let pageCount = 0;
 
   while (nextUrl) {
+    if (pageCount >= EXACT_MAX_PAGES) {
+      throw new Error("O Exact Spotter retornou paginas demais para essa consulta.");
+    }
+
     if (visitedUrls.has(nextUrl)) {
       throw new Error("A paginacao do Exact Spotter retornou um loop inesperado.");
     }
 
     visitedUrls.add(nextUrl);
     const payload = await fetchExact<T>(nextUrl, tokenExact);
-    items.push(...payload.value);
+    const pageItems = Array.isArray(payload.value) ? payload.value : [];
+
+    if (pageItems.length === 0) {
+      break;
+    }
+
+    const identifiableItems = pageItems.filter(
+      (item): item is T & { id: string | number } =>
+        typeof item === "object" && item !== null && "id" in item && (typeof (item as { id: unknown }).id === "string" || typeof (item as { id: unknown }).id === "number")
+    );
+
+    if (identifiableItems.length > 0) {
+      const newItems = identifiableItems.filter((item) => !seenIds.has(item.id));
+
+      if (newItems.length === 0) {
+        break;
+      }
+
+      newItems.forEach((item) => seenIds.add(item.id));
+
+      const otherItems = pageItems.filter((item) => !identifiableItems.includes(item as T & { id: string | number }));
+      items.push(...newItems, ...otherItems);
+    } else {
+      items.push(...pageItems);
+    }
+
+    pageCount += 1;
     nextUrl = payload["@odata.nextLink"];
   }
 
